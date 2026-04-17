@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-app-bg: #F0F2F5;
+  --color-app-card: #FFFFFF;
+  --color-app-border: #1A1A1A;
+  --color-app-accent: #25D366;
+  --color-app-primary: #4F46E5;
+  --color-app-text: #111827;
+  --color-app-muted: #6B7280;
+  
+  --shadow-bento: 4px 4px 0px #1A1A1A;
+  --shadow-bento-sm: 2px 2px 0px #1A1A1A;
+}
+
+@layer base {
+  body {
+    @apply bg-app-bg text-app-text antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+@layer components {
+  .bento-card {
+    @apply bg-app-card border-2 border-app-border rounded-[12px] p-5 flex flex-col shadow-bento;
+  }
+  .card-header {
+    @apply text-xs font-bold uppercase tracking-widest text-app-muted mb-4 flex justify-between items-center;
+  }
+  .bento-btn {
+    @apply inline-flex items-center justify-center gap-2 bg-app-bg border-2 border-app-border px-4 py-2 rounded-lg text-sm font-bold text-app-text shadow-bento-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all cursor-pointer;
+  }
+  .bento-btn-primary {
+    @apply bg-app-primary text-white;
+  }
+  .bento-btn-accent {
+    @apply bg-app-accent text-white border-app-accent;
+  }
+  .bento-input {
+    @apply block w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-app-border focus:ring-0 focus:shadow-bento-sm transition-all;
+  }
+  .bento-select {
+    @apply block w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-app-border focus:ring-0 focus:shadow-bento-sm transition-all bg-white;
+  }
+  .bento-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .bento-table th {
+    @apply py-3 px-4 text-left font-bold border-b-2 border-app-border text-app-border uppercase text-xs tracking-wider bg-gray-100;
+  }
+  .bento-table td {
+    @apply py-3 px-4 border-b border-gray-200 text-app-text whitespace-nowrap;
+  }
+  .stat-huge {
+    @apply text-3xl font-extrabold mt-1 text-app-text;
+  }
+  .label-small {
+    @apply text-[11px] font-bold text-app-muted uppercase tracking-wider;
+  }
+  .notice-pill {
+    @apply bg-gray-100 border border-gray-300 px-3 py-2 rounded-lg text-sm shadow-sm;
+  }
+}

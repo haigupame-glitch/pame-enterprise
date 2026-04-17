@@ -1,0 +1,6 @@
+{
+  "name": "SHG Manager",
+  "description": "An app for managing Self Help Groups, tracking monthly collections, transactions, loans, and generating reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
