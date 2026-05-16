@@ -1,14 +1,22 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { generateId } from '../lib/utils';
 import { format } from 'date-fns';
+import { ImageCropperModal } from '../components/ImageCropperModal';
 
 export function Groups() {
-  const { groups, activeGroupId, addGroup, updateConstitution } = useAppContext();
+  const { groups, activeGroupId, addGroup, updateGroup, deleteGroup, updateConstitution, updateGroupLogo, currentUserRole } = useAppContext();
   const [name, setName] = useState('');
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const [constitutionText, setConstitutionText] = useState('');
+  const [cropModalData, setCropModalData] = useState<{ src: string; isLogo: boolean } | null>(null);
+
+  const canEdit = currentUserRole === 'SUPER_ADMIN';
 
   useEffect(() => {
     if (activeGroup) {
@@ -36,31 +44,67 @@ export function Groups() {
     }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, isLogo: boolean) => {
+    const file = e.target.files?.[0];
+    if (file && activeGroupId) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size exceeds 5MB limit. Please choose a smaller image.");
+        e.target.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCropModalData({ src: reader.result as string, isLogo });
+      };
+      reader.readAsDataURL(file);
+      e.target.value = ''; 
+    }
+  };
+
+  const handleCropComplete = (croppedImageBase64: string) => {
+    if (activeGroupId && cropModalData) {
+      if (cropModalData.isLogo) {
+        updateGroupLogo(activeGroupId, croppedImageBase64);
+      }
+    }
+    setCropModalData(null);
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {cropModalData && (
+        <ImageCropperModal
+          imageSrc={cropModalData.src}
+          aspectRatio={cropModalData.isLogo ? 1 : 21/9}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropModalData(null)}
+        />
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
-          <div className="bento-card">
-            <form onSubmit={handleSubmit} className="w-full">
-              <div className="card-header">CREATE NEW GROUP</div>
-              <div className="flex gap-x-4">
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="bento-input flex-auto"
-                  placeholder="e.g. Mahila Samiti SHG"
-                />
-                <button
-                  type="submit"
-                  className="bento-btn bento-btn-primary flex-none"
-                >
-                  Save Group
-                </button>
-              </div>
-            </form>
-          </div>
+          {canEdit && (
+            <div className="bento-card">
+              <form onSubmit={handleSubmit} className="w-full">
+                <div className="card-header">CREATE NEW GROUP</div>
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  <textarea
+                    required
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="bento-input flex-auto w-full min-h-[42px] resize-y"
+                    placeholder="e.g. Mahila Samiti SHG. You can enter details about the group here."
+                    rows={3}
+                  />
+                  <button
+                    type="submit"
+                    className="bento-btn bento-btn-primary flex-none w-full sm:w-auto"
+                  >
+                    Save Group
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           <div className="bento-card !p-0 overflow-hidden">
             <div className="p-4 border-b-2 border-app-border">
@@ -72,18 +116,102 @@ export function Groups() {
                   <tr>
                     <th>Group Name</th>
                     <th>Created Date</th>
+                    {canEdit && <th className="w-20">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {groups.map((group) => (
                     <tr key={group.id}>
-                      <td className="font-bold">{group.name}</td>
+                      <td className="font-bold">
+                        {editingGroupId === group.id ? (
+                          <textarea
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            className="bento-input py-1 px-2 text-sm w-full min-w-[200px] resize-y"
+                            autoFocus
+                            rows={2}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                updateGroup(group.id, { name: editName });
+                                setEditingGroupId(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingGroupId(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="whitespace-pre-wrap">{group.name}</div>
+                        )}
+                      </td>
                       <td>{format(new Date(group.createdDate), 'dd MMM yyyy')}</td>
+                      {canEdit && (
+                        <td>
+                          {editingGroupId === group.id ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  updateGroup(group.id, { name: editName });
+                                  setEditingGroupId(null);
+                                }}
+                                className="text-xs font-bold text-app-accent hover:underline"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingGroupId(null)}
+                                className="text-xs font-bold text-app-muted hover:text-white hover:underline"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => {
+                                  setEditingGroupId(group.id);
+                                  setEditName(group.name);
+                                }}
+                                className="text-xs font-bold text-app-primary hover:underline"
+                              >
+                                Edit
+                              </button>
+                              {deletingId === group.id ? (
+                                <div className="flex gap-2 items-center">
+                                  <span className="text-xs text-red-500 font-medium">Sure?</span>
+                                  <button
+                                    onClick={() => {
+                                      deleteGroup(group.id);
+                                      setDeletingId(null);
+                                    }}
+                                    className="text-xs font-bold text-red-500 hover:text-red-400 hover:underline"
+                                  >
+                                    Yes
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingId(null)}
+                                    className="text-xs font-bold text-app-muted hover:text-white hover:underline"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeletingId(group.id)}
+                                  className="text-xs font-bold text-red-500 hover:text-red-400 hover:underline"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {groups.length === 0 && (
                     <tr>
-                      <td colSpan={2} className="py-8 text-center text-app-muted">
+                      <td colSpan={3} className="py-8 text-center text-app-muted">
                         No groups created yet.
                       </td>
                     </tr>
@@ -95,25 +223,52 @@ export function Groups() {
         </div>
 
         {activeGroup && (
-          <div className="bento-card flex-col h-[600px] !p-0 overflow-hidden">
-            <div className="p-4 border-b-2 border-app-border bg-gray-50 flex justify-between items-center shrink-0">
-              <div className="card-header !mb-0">GROUP CONSTITUTION</div>
-              <button
-                onClick={handleUpdateConstitution}
-                className="bento-btn py-1 px-3 text-xs"
-              >
-                Save
-              </button>
+          <div className="space-y-8">
+            <div className="bento-card">
+              <div className="card-header">GROUP LOGO / ICON</div>
+              <div className="flex items-center gap-6">
+                {activeGroup.logo ? (
+                  <img src={activeGroup.logo} alt={`${activeGroup.name} Logo`} className="w-20 h-20 object-contain rounded-lg border border-app-border bg-app-card shrink-0" />
+                ) : (
+                  <div className="w-20 h-20 rounded-lg border border-dashed border-app-border bg-app-card flex items-center justify-center text-xs text-app-muted font-medium shrink-0">No Logo</div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageSelect(e, true)}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-xl file:border-2 file:border-app-border
+                      file:text-sm file:font-semibold
+                      file:bg-white file:text-app-text file:cursor-pointer
+                      hover:file:bg-gray-50 file:transition-colors"
+                  />
+                  <p className="text-xs text-app-muted">Recommended: Square image, max 2MB.</p>
+                </div>
+              </div>
             </div>
-            <div className="p-4 bg-app-card shrink-0 border-b border-gray-200">
-              <p className="text-xs text-app-muted">Draft rules and regulations for <strong>{activeGroup.name}</strong></p>
+
+            <div className="bento-card flex-col h-[500px] !p-0 overflow-hidden flex">
+              <div className="p-4 border-b-2 border-app-border bg-gray-50 flex justify-between items-center shrink-0">
+                <div className="card-header !mb-0">GROUP CONSTITUTION</div>
+                <button
+                  onClick={handleUpdateConstitution}
+                  className="bento-btn py-1 px-3 text-xs"
+                >
+                  Save
+                </button>
+              </div>
+              <div className="p-4 bg-app-card shrink-0 border-b border-gray-200">
+                <p className="text-xs text-app-muted">Draft rules and regulations for <strong>{activeGroup.name}</strong></p>
+              </div>
+              <textarea
+                className="flex-1 w-full border-0 py-4 px-6 text-app-text focus:ring-0 resize-none font-mono text-sm leading-relaxed"
+                placeholder="1. Name of the group...&#10;2. Aims and objectives...&#10;3. Membership criteria..."
+                value={constitutionText}
+                onChange={(e) => setConstitutionText(e.target.value)}
+              />
             </div>
-            <textarea
-              className="flex-1 w-full border-0 py-4 px-6 text-app-text focus:ring-0 resize-none font-mono text-sm leading-relaxed"
-              placeholder="1. Name of the group...&#10;2. Aims and objectives...&#10;3. Membership criteria..."
-              value={constitutionText}
-              onChange={(e) => setConstitutionText(e.target.value)}
-            />
           </div>
         )}
       </div>

@@ -1,14 +1,17 @@
+import React from 'react';
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { generateId } from '../lib/utils';
 import { format } from 'date-fns';
 
 export function Notices() {
-  const { notices, activeGroupId, addNotice } = useAppContext();
+  const { notices, activeGroupId, addNotice, currentUserRole } = useAppContext();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   
   const groupNotices = notices.filter(n => n.groupId === activeGroupId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,24 +36,26 @@ export function Notices() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <div className="lg:col-span-4 space-y-6">
-        <div className="bento-card">
-          <div className="card-header">CREATE NOTICE</div>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label-small mb-1 block">Title / Subject</label>
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="bento-input" />
-            </div>
-            <div>
-              <label className="label-small mb-1 block">Content</label>
-              <textarea rows={4} value={content} onChange={e => setContent(e.target.value)} required className="bento-input resize-y" />
-            </div>
-            <button type="submit" className="bento-btn bento-btn-primary w-full">Post Notice</button>
-          </form>
+      {canEdit && (
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bento-card">
+            <div className="card-header">CREATE NOTICE</div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="label-small mb-1 block">Title / Subject</label>
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="bento-input" />
+              </div>
+              <div>
+                <label className="label-small mb-1 block">Content</label>
+                <textarea rows={4} value={content} onChange={e => setContent(e.target.value)} required className="bento-input resize-y" />
+              </div>
+              <button type="submit" className="bento-btn bento-btn-primary w-full">Post Notice</button>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
       
-      <div className="lg:col-span-8 space-y-4">
+      <div className={`space-y-4 ${canEdit ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
         <h2 className="card-header ml-2">RECENT NOTICES</h2>
         {groupNotices.length === 0 && <p className="text-app-muted text-sm ml-2">No notices posted yet.</p>}
         {groupNotices.map(notice => (

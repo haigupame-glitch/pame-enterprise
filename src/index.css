@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-app-bg: #F0F2F5;
-  --color-app-card: #FFFFFF;
-  --color-app-border: #1A1A1A;
-  --color-app-accent: #25D366;
-  --color-app-primary: #4F46E5;
-  --color-app-text: #111827;
-  --color-app-muted: #6B7280;
+  --color-app-bg: #0f172a;
+  --color-app-card: #1e293b;
+  --color-app-border: #334155;
+  --color-app-accent: #10B981;
+  --color-app-primary: #3B82F6;
+  --color-app-text: #f8fafc;
+  --color-app-muted: #94a3b8;
   
-  --shadow-bento: 4px 4px 0px #1A1A1A;
-  --shadow-bento-sm: 2px 2px 0px #1A1A1A;
+  --shadow-bento: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --shadow-bento-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
 }
 
 @layer base {
@@ -22,42 +22,44 @@
 
 @layer components {
   .bento-card {
-    @apply bg-app-card border-2 border-app-border rounded-[12px] p-5 flex flex-col shadow-bento;
+    @apply bg-app-card border border-app-border rounded-xl p-5 flex flex-col shadow-bento;
   }
   .card-header {
-    @apply text-xs font-bold uppercase tracking-widest text-app-muted mb-4 flex justify-between items-center;
+    @apply text-xs font-semibold uppercase tracking-wider text-app-muted mb-4 flex justify-between items-center;
   }
   .bento-btn {
-    @apply inline-flex items-center justify-center gap-2 bg-app-bg border-2 border-app-border px-4 py-2 rounded-lg text-sm font-bold text-app-text shadow-bento-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 bg-app-card border border-app-border px-4 py-2 rounded-lg text-sm font-medium text-app-text shadow-bento-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-app-primary/20 transition-all cursor-pointer;
   }
   .bento-btn-primary {
-    @apply bg-app-primary text-white;
+    @apply bg-app-primary text-white border-transparent hover:bg-blue-600 focus:ring-blue-500/20 shadow-sm;
   }
   .bento-btn-accent {
-    @apply bg-app-accent text-white border-app-accent;
+    @apply bg-app-accent text-white border-transparent hover:bg-emerald-600 focus:ring-emerald-500/20 shadow-sm;
   }
   .bento-input {
-    @apply block w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-app-border focus:ring-0 focus:shadow-bento-sm transition-all;
+    @apply block w-full rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm focus:border-app-primary focus:ring-1 focus:ring-app-primary outline-none transition-all font-normal text-app-text placeholder:text-app-muted;
   }
   .bento-select {
-    @apply block w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-app-border focus:ring-0 focus:shadow-bento-sm transition-all bg-white;
+    @apply block w-full rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm focus:border-app-primary focus:ring-1 focus:ring-app-primary outline-none transition-all font-normal text-app-text;
   }
   .bento-table {
     @apply w-full border-collapse text-sm;
   }
   .bento-table th {
-    @apply py-3 px-4 text-left font-bold border-b-2 border-app-border text-app-border uppercase text-xs tracking-wider bg-gray-100;
+    @apply py-3 px-4 text-left font-medium border-b border-app-border text-app-muted text-xs bg-slate-800/50;
   }
   .bento-table td {
-    @apply py-3 px-4 border-b border-gray-200 text-app-text whitespace-nowrap;
+    @apply py-3 px-4 border-b border-app-border text-app-text whitespace-nowrap;
   }
   .stat-huge {
-    @apply text-3xl font-extrabold mt-1 text-app-text;
+    @apply text-3xl font-semibold mt-1 text-app-text tracking-tight;
   }
   .label-small {
-    @apply text-[11px] font-bold text-app-muted uppercase tracking-wider;
+    @apply text-[11px] font-medium text-app-muted uppercase tracking-wider;
   }
   .notice-pill {
-    @apply bg-gray-100 border border-gray-300 px-3 py-2 rounded-lg text-sm shadow-sm;
+    @apply bg-slate-800 border border-app-border px-3 py-2 rounded-lg text-sm text-slate-300;
   }
 }
+
+

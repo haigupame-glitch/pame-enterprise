@@ -1,12 +1,16 @@
+import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2 } from 'lucide-react';
 import { useAppContext } from '../store/AppContext';
 import { cn } from '../lib/utils';
 import { useState } from 'react';
+import type { Role } from '../types';
+import { auth } from '../lib/firebase';
 
 const navigation = [
   { name: 'Dashboard', to: '/', icon: LayoutDashboard },
   { name: 'Groups', to: '/groups', icon: Building },
+  { name: 'Constitution', to: '/constitution', icon: FileText, defaultGroupNeeds: true },
   { name: 'Members', to: '/members', icon: Users, defaultGroupNeeds: true },
   { name: 'Collections', to: '/collections', icon: Wallet, defaultGroupNeeds: true },
   { name: 'Transactions', to: '/transactions', icon: ScrollText, defaultGroupNeeds: true },
@@ -14,6 +18,7 @@ const navigation = [
   { name: 'Activities', to: '/activities', icon: ClipboardList, defaultGroupNeeds: true },
   { name: 'Resolutions', to: '/resolutions', icon: FileSignature, defaultGroupNeeds: true },
   { name: 'Notices', to: '/notices', icon: Send, defaultGroupNeeds: true },
+  { name: 'Reports', to: '/reports', icon: BarChart3, defaultGroupNeeds: true },
 ];
 
 export function Layout() {
@@ -21,20 +26,26 @@ export function Layout() {
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
   return (
-    <div className="flex h-screen bg-app-bg text-app-text font-sans selection:bg-app-primary selection:text-white">
+    <div className="flex bg-app-bg text-app-text font-sans selection:bg-app-primary selection:text-white print:block print:h-auto print:bg-white h-screen">
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-app-card border-r-2 border-app-border p-6 flex flex-col gap-8 shrink-0 overflow-y-auto">
-        <div className="flex items-center gap-2 font-extrabold text-xl tracking-tight">
-          <div className="w-8 h-8 bg-app-primary rounded-lg border-2 border-app-border shadow-bento-sm"></div>
-          SHG Connect
+      <aside className="w-64 bg-app-card border-r border-app-border p-6 flex flex-col gap-8 shrink-0 overflow-y-auto print:hidden">
+        <div className="flex items-center gap-3 font-semibold text-lg tracking-tight">
+          {activeGroup?.logo ? (
+            <img src={activeGroup.logo} alt="Logo" className="w-10 h-10 object-contain rounded-lg border border-app-border bg-white shadow-sm shrink-0" />
+          ) : (
+            <div className="w-10 h-10 bg-app-primary rounded-lg shadow-sm shrink-0 flex items-center justify-center">
+               <Building className="w-5 h-5 text-white" strokeWidth={1.5} />
+            </div>
+          )}
+          <span className="truncate">{activeGroup ? activeGroup.name : 'SHG Connect'}</span>
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="label-small mb-1">Active Group</div>
+          <div className="label-small text-gray-400">Active Group</div>
           <select 
             value={activeGroupId || ''} 
             onChange={(e) => setActiveGroup(e.target.value || null)}
-            className="bento-select font-bold"
+            className="bento-select font-medium text-sm"
           >
             <option value="">-- Select Group --</option>
             {groups.map(g => (
@@ -44,7 +55,7 @@ export function Layout() {
         </div>
 
         <nav className="flex-1 mt-2">
-          <ul className="space-y-3">
+          <ul className="space-y-1.5 print:hidden">
             {navigation.map((item) => {
               if (item.defaultGroupNeeds && !activeGroupId) return null;
               
@@ -53,15 +64,15 @@ export function Layout() {
                   <NavLink
                     to={item.to}
                     className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl border-2 transition-all",
+                      "flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all border",
                       isActive 
-                        ? "bg-app-border text-white border-app-border" 
-                        : "bg-transparent border-transparent text-app-text hover:border-gray-200"
+                        ? "bg-app-primary text-white border-app-primary shadow-sm" 
+                        : "bg-transparent border-transparent text-app-text hover:bg-slate-700/50"
                     )}
                   >
                     {({ isActive }) => (
                       <>
-                        <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-app-muted")} />
+                        <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-app-muted")} strokeWidth={1.5} />
                         {item.name}
                       </>
                     )}
@@ -74,17 +85,73 @@ export function Layout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <header className="bg-app-card border-b-2 border-app-border px-8 py-5 flex items-center justify-between shrink-0">
-          <h2 className="text-xl font-bold uppercase tracking-tight">
+      <div className="flex-1 overflow-hidden flex flex-col print:overflow-visible">
+        <header className="bg-app-card border-b border-app-border px-8 py-4 flex items-center justify-between shrink-0 print:hidden">
+          <h2 className="text-lg font-semibold tracking-tight text-app-text">
             {activeGroup ? activeGroup.name : 'Welcome'}
           </h2>
+          {/* Role Switcher for Testing */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-app-muted uppercase tracking-wider font-bold">Role:</span>
+              <RoleSwitcher />
+            </div>
+            <button 
+              onClick={() => auth.signOut()}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors border border-red-400/20"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
+          </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible">
           <Outlet />
         </main>
       </div>
+    </div>
+  );
+}
+
+function RoleSwitcher() {
+  const { currentUserRole, setCurrentUserRole, currentUserId, setCurrentUserId, members, activeGroupId } = useAppContext();
+  const groupMembers = members.filter(m => m.groupId === activeGroupId);
+
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const r = e.target.value as Role;
+    setCurrentUserRole(r);
+    if (r !== 'MEMBER') {
+      setCurrentUserId(null);
+    } else if (groupMembers.length > 0) {
+      setCurrentUserId(groupMembers[0].id);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <select 
+        value={currentUserRole}
+        onChange={handleRoleChange}
+        className="bento-select py-1 px-2 text-xs font-bold bg-slate-800 text-white rounded-md border-none cursor-pointer"
+      >
+        <option value="SUPER_ADMIN">SUPER ADMIN</option>
+        <option value="ADMIN">ADMIN</option>
+        <option value="MEMBER">MEMBER</option>
+      </select>
+      
+      {currentUserRole === 'MEMBER' && activeGroupId && (
+        <select 
+          value={currentUserId || ''}
+          onChange={(e) => setCurrentUserId(e.target.value)}
+          className="bento-select py-1 px-2 text-xs bg-slate-700 text-white rounded-md border-none cursor-pointer max-w-[120px]"
+        >
+          <option value="" disabled>Select member...</option>
+          {groupMembers.map(m => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }

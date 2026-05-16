@@ -5,10 +5,12 @@ import { generateId } from '../lib/utils';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export function Collections() {
-  const { members, collections, activeGroupId, saveCollection } = useAppContext();
+  const { members, collections, activeGroupId, saveCollection, currentUserRole } = useAppContext();
   const [year, setYear] = useState(new Date().getFullYear());
 
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
+  
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
 
   const handleAmountChange = (memberId: string, month: number, value: string) => {
     if (!activeGroupId) return;
@@ -25,7 +27,7 @@ export function Collections() {
 
   const getAmount = (memberId: string, month: number) => {
     const col = collections.find(c => c.groupId === activeGroupId && c.memberId === memberId && c.year === year && c.month === month);
-    return col ? col.amount : '';
+    return col && !isNaN(col.amount) ? col.amount : '';
   };
 
   return (
@@ -62,23 +64,25 @@ export function Collections() {
             </thead>
             <tbody>
               {groupMembers.map((member, idx) => (
-                <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="text-center font-mono text-app-muted border-r border-gray-200">{idx + 1}</td>
-                  <td className="font-bold border-r border-gray-200">{member.name}</td>
+                <tr key={member.id} className="hover:bg-slate-700/20 transition-colors">
+                  <td className="text-center font-mono text-app-muted border-r border-app-border">{idx + 1}</td>
+                  <td className="font-bold border-r border-app-border">{member.name}</td>
                   {MONTHS.map((_, mIdx) => (
-                    <td key={mIdx} className="!p-0 border-r border-gray-200">
+                    <td key={mIdx} className="!p-0 border-r border-app-border">
                       <input
                         type="number"
                         value={getAmount(member.id, mIdx)}
                         onChange={e => handleAmountChange(member.id, mIdx, e.target.value)}
-                        className="w-full bg-transparent border-0 text-center text-sm p-3 focus:ring-2 focus:ring-inset focus:ring-app-primary font-mono"
+                        disabled={!canEdit}
+                        className="w-full bg-transparent border-0 text-center text-sm p-3 focus:ring-2 focus:ring-inset focus:ring-app-primary font-mono disabled:opacity-50"
                       />
                     </td>
                   ))}
                   <td className="!p-0">
                     <input
                       type="text"
-                      className="w-full bg-transparent border-0 text-sm p-3 focus:ring-2 focus:ring-inset focus:ring-app-primary"
+                      disabled={!canEdit}
+                      className="w-full bg-transparent border-0 text-sm p-3 focus:ring-2 focus:ring-inset focus:ring-app-primary disabled:opacity-50"
                     />
                   </td>
                 </tr>

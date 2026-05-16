@@ -1,16 +1,29 @@
+export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'MEMBER';
+
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}
+
 export interface Group {
   id: string;
   name: string;
   createdDate: string;
   constitution: string;
+  logo?: string;
 }
 
 export interface Member {
   id: string;
   groupId: string;
+  memberNumber?: string;
   name: string;
   contact: string;
+  address?: string;
+  aadharNumber?: string;
   joinDate: string;
+  photoUrl?: string;
 }
 
 export interface Collection {
@@ -80,4 +93,5 @@ export interface Activity {
   description: string;
   participants: number;
   cost: number;
+  photoUrls?: string[];
 }
