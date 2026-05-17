@@ -12,6 +12,7 @@ export function MemberLoginModal({ member, onClose }: Props) {
   const { updateMember } = useAppContext();
   const [loginId, setLoginId] = useState(member.loginId || member.contact || '');
   const [password, setPassword] = useState(member.loginPassword || '');
+  const [role, setRole] = useState(member.role || 'MEMBER');
   const [showSaved, setShowSaved] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
@@ -19,7 +20,8 @@ export function MemberLoginModal({ member, onClose }: Props) {
     updateMember({
       ...member,
       loginId,
-      loginPassword: password
+      loginPassword: password,
+      role
     });
     setShowSaved(true);
     setTimeout(() => {
@@ -67,6 +69,18 @@ export function MemberLoginModal({ member, onClose }: Props) {
               className="bento-input w-full font-mono"
               placeholder="Set password"
             />
+          </div>
+          
+          <div>
+            <label className="label-small mb-1 block">Role</label>
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value as any)}
+              className="bento-select w-full"
+            >
+              <option value="MEMBER">Member</option>
+              <option value="ADMIN">Admin</option>
+            </select>
           </div>
           
           <div className="pt-2">

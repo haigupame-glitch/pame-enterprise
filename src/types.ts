@@ -29,6 +29,7 @@ export interface Member {
   idIssueDate?: string;
   loginId?: string;
   loginPassword?: string;
+  role?: Role;
 }
 
 export interface Collection {

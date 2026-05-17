@@ -165,30 +165,32 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
               </div>
 
               {/* Member Details */}
-              <div className="relative z-10 w-full mt-auto space-y-1.5 mb-12">
-                <div className="grid grid-cols-[70px_1fr] text-left text-xs items-center">
+              <div className="relative z-10 w-full mt-auto space-y-2 mb-14">
+                <div className="grid grid-cols-[65px_1fr] text-left text-xs items-center gap-1">
                   <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">ID NO</span>
                   <span className="font-mono text-gray-800 font-semibold">{member.memberNumber || member.id.substring(0, 8)}</span>
                 </div>
                 {member.contact && (
-                  <div className="grid grid-cols-[70px_1fr] text-left text-xs items-center">
+                  <div className="grid grid-cols-[65px_1fr] text-left text-xs items-center gap-1">
                     <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">PHONE</span>
-                    <span className="font-mono text-gray-800 font-semibold">{member.contact}</span>
+                    <span className="font-mono text-gray-800 font-semibold tracking-wide">{member.contact}</span>
                   </div>
                 )}
                 {member.address && (
-                  <div className="grid grid-cols-[70px_1fr] text-left text-xs items-start">
+                  <div className="grid grid-cols-[65px_1fr] text-left text-xs items-start gap-1">
                     <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px] pt-0.5">ADDRESS</span>
-                    <span className={cn("font-medium leading-snug break-words text-gray-800", addressSizeClass)}>{member.address}</span>
+                    <span className={cn("font-medium leading-snug break-words text-gray-800", addressSizeClass)} style={{ letterSpacing: '0.01em' }}>{member.address}</span>
                   </div>
                 )}
               </div>
 
               {/* Group Contact Info */}
               {(group.contact || group.email) && (
-                <div className="absolute bottom-[44px] left-7 right-7 flex items-center justify-between text-[9px] text-gray-500 border-t border-slate-100 pt-1.5">
-                   <span className="font-bold uppercase tracking-wider text-gray-400">Group Contact:</span>
-                   <span className="font-mono font-medium text-emerald-700/80 line-clamp-1 text-right">{[group.contact, group.email].filter(Boolean).join(' • ')}</span>
+                <div className="absolute bottom-[44px] left-7 right-7 flex flex-col justify-end text-[9px] text-gray-500 border-t border-slate-100 pt-1.5 bg-white z-20">
+                   <div className="flex items-center justify-between gap-2">
+                     <span className="font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">Group Contact:</span>
+                     <span className="font-mono font-medium text-emerald-700/90 line-clamp-1 text-right tracking-tight">{[group.contact, group.email].filter(Boolean).join(' • ')}</span>
+                   </div>
                 </div>
               )}
 

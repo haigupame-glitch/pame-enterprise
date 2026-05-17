@@ -43,9 +43,8 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         // First try to authenticate as a local member
         const member = members.find(m => m.loginId === phone && m.loginPassword === password);
         if (member) {
-          // If we find a member, assume they are a MEMBER user
           setCurrentUserId(member.id);
-          setCurrentUserRole('MEMBER');
+          setCurrentUserRole(member.role || 'MEMBER');
           onLogin();
           return;
         }
