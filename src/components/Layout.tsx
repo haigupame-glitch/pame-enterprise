@@ -93,11 +93,10 @@ export function Layout() {
             </h2>
             <SyncIndicator />
           </div>
-          {/* Role Switcher for Testing */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xs text-app-muted uppercase tracking-wider font-bold">Role:</span>
-              <RoleSwitcher />
+              <RoleDisplay />
             </div>
             <button 
               onClick={() => auth.signOut()}
@@ -117,43 +116,20 @@ export function Layout() {
   );
 }
 
-function RoleSwitcher() {
-  const { currentUserRole, setCurrentUserRole, currentUserId, setCurrentUserId, members, activeGroupId } = useAppContext();
-  const groupMembers = members.filter(m => m.groupId === activeGroupId);
-
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const r = e.target.value as Role;
-    setCurrentUserRole(r);
-    if (r !== 'MEMBER') {
-      setCurrentUserId(null);
-    } else if (groupMembers.length > 0) {
-      setCurrentUserId(groupMembers[0].id);
-    }
-  };
+function RoleDisplay() {
+  const { currentUserRole, currentUserId, members } = useAppContext();
+  const currentMember = members.find(m => m.id === currentUserId);
 
   return (
     <div className="flex items-center gap-2">
-      <select 
-        value={currentUserRole}
-        onChange={handleRoleChange}
-        className="bento-select py-1 px-2 text-xs font-bold bg-slate-800 text-white rounded-md border-none cursor-pointer"
-      >
-        <option value="SUPER_ADMIN">SUPER ADMIN</option>
-        <option value="ADMIN">ADMIN</option>
-        <option value="MEMBER">MEMBER</option>
-      </select>
+      <div className="py-1 px-3 text-xs font-bold bg-slate-800 text-orange-400 rounded-md border border-slate-700/50 shadow-inner select-none truncate">
+        {currentUserRole.replace('_', ' ')}
+      </div>
       
-      {currentUserRole === 'MEMBER' && activeGroupId && (
-        <select 
-          value={currentUserId || ''}
-          onChange={(e) => setCurrentUserId(e.target.value)}
-          className="bento-select py-1 px-2 text-xs bg-slate-700 text-white rounded-md border-none cursor-pointer max-w-[120px]"
-        >
-          <option value="" disabled>Select member...</option>
-          {groupMembers.map(m => (
-            <option key={m.id} value={m.id}>{m.name}</option>
-          ))}
-        </select>
+      {currentUserRole === 'MEMBER' && currentMember && (
+        <div className="py-1 px-3 text-xs font-semibold bg-slate-700/50 text-white rounded-md border border-slate-600/50 truncate max-w-[150px]" title={currentMember.name}>
+          {currentMember.name}
+        </div>
       )}
     </div>
   );

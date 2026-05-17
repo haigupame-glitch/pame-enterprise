@@ -10,6 +10,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [loginType, setLoginType] = useState<'MEMBER' | 'ADMIN' | 'SUPER_ADMIN'>('MEMBER');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { members, setCurrentUserId, setCurrentUserRole, activeGroupId, groups } = useAppContext();
@@ -40,21 +41,38 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
     try {
       if (isLogin) {
-        // First try to authenticate as a local member
-        const member = members.find(m => m.loginId === phone && m.loginPassword === password);
-        if (member) {
-          setCurrentUserId(member.id);
-          setCurrentUserRole(member.role || 'MEMBER');
-          onLogin();
-          return;
+        if (loginType === 'SUPER_ADMIN') {
+          // Super Admin: uses Firebase Auth
+          const pseudoEmail = getPseudoEmail(phone);
+          try {
+            await signInWithEmailAndPassword(auth, pseudoEmail, password);
+            setCurrentUserRole('SUPER_ADMIN');
+            onLogin();
+          } catch (firebaseErr: any) {
+             throw firebaseErr;
+          }
+        } else {
+          // Member / Admin: uses Local Members list check
+          const member = members.find(m => (m.loginId === phone || m.contact === phone) && m.loginPassword === password);
+          if (member) {
+            const memberRole = member.role || 'MEMBER';
+            if (memberRole === loginType || memberRole === 'SUPER_ADMIN') {
+              setCurrentUserId(member.id);
+              setCurrentUserRole(memberRole);
+              onLogin();
+            } else {
+              setError('Wrong credentials');
+            }
+          } else {
+             setError('Wrong credentials');
+          }
         }
-
-        // If not a local member, fallback to Firebase auth (for SUPER_ADMIN/ADMIN)
-        const pseudoEmail = getPseudoEmail(phone);
-        await signInWithEmailAndPassword(auth, pseudoEmail, password);
-        setCurrentUserRole('SUPER_ADMIN'); // Default to super admin for firebase users for demo
-        onLogin();
       } else {
+        if (loginType !== 'SUPER_ADMIN') {
+           setError('Only Super Admins can sign up for new accounts.');
+           setLoading(false);
+           return;
+        }
         const pseudoEmail = getPseudoEmail(phone);
         await createUserWithEmailAndPassword(auth, pseudoEmail, password);
         setCurrentUserRole('SUPER_ADMIN');
@@ -63,11 +81,11 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        setError('Invalid phone number or password.');
+        setError('Wrong credentials');
       } else if (err.code === 'auth/email-already-in-use') {
         setError('An account with this phone number already exists. Please log in.');
       } else {
-        setError(err.message || 'An error occurred during authentication.');
+        setError('Wrong credentials');
       }
     } finally {
       setLoading(false);
@@ -81,11 +99,28 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           {isLogin ? 'SHG APP LOGIN' : 'CREATE ACCOUNT'}
         </div>
         
+        <div className="flex bg-slate-900 rounded-lg p-1 space-x-1 mb-6">
+          {(['MEMBER', 'ADMIN', 'SUPER_ADMIN'] as const).map(role => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => {
+                 setLoginType(role);
+                 setError('');
+                 setIsLogin(true); // switch back to login mode if changing tab
+              }}
+              className={`flex-1 text-[10px] font-bold uppercase tracking-[0.05em] py-2.5 rounded-md transition-colors ${loginType === role ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            >
+               {role.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+
         {error && <div className="bg-red-500/20 text-red-500 p-3 rounded-lg mb-4 text-sm font-medium">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label-small mb-1 block text-slate-300">Mobile Number</label>
+            <label className="label-small mb-1 block text-slate-300">Mobile Number (Login ID)</label>
             <input
               type="tel"
               value={phone}
@@ -107,19 +142,21 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             />
           </div>
           <button type="submit" disabled={loading} className="bento-btn bento-btn-primary w-full disabled:opacity-50">
-            {loading ? (isLogin ? 'Logging in...' : 'Creating account...') : (isLogin ? 'Login' : 'Sign Up')}
+            {loading ? (isLogin ? 'Logging in...' : 'Creating account...') : (isLogin ? `Login as ${loginType.replace('_', ' ')}` : 'Sign Up as SUPER ADMIN')}
           </button>
           
-          <button 
-            type="button" 
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError('');
-            }} 
-            className="mt-2 text-sm text-app-primary hover:underline w-full text-center block"
-          >
-            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Login"}
-          </button>
+          {loginType === 'SUPER_ADMIN' && (
+            <button 
+              type="button" 
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }} 
+              className="mt-4 text-xs font-semibold text-slate-400 hover:text-white uppercase tracking-wider hover:underline w-full text-center block transition-colors"
+            >
+              {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Login"}
+            </button>
+          )}
         </form>
       </div>
     </div>
