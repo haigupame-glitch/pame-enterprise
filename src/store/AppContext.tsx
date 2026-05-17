@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import localforage from 'localforage';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 import type { Group, Member, Collection, Transaction, Loan, LoanRepayment, Resolution, Notice, Activity, Role } from '../types';
 
 interface AppState {
@@ -99,16 +101,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Network listeners
   useEffect(() => {
     const handleOnline = () => {
-      setState(prev => ({ ...prev, isOnline: true, syncStatus: 'syncing' }));
-      
-      // Simulate sync to server
-      setTimeout(() => {
-        setState(prev => ({ 
-          ...prev, 
-          syncStatus: 'synced',
-          pendingChanges: 0 // Clear pending changes after "sync"
-        }));
-      }, 1500); 
+      setState(prev => ({ ...prev, isOnline: true }));
     };
 
     const handleOffline = () => {
@@ -118,16 +111,102 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial sync check on mount if online and has pending
-    if (navigator.onLine && state.pendingChanges > 0 && isLoaded) {
-      handleOnline();
-    }
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Firestore sync: PULL
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    let unsubscribeSnapshot: (() => void) | undefined;
+    
+    const unsubscribeAuth = auth.onAuthStateChanged(user => {
+      if (user) {
+        // Subscribe to firestore
+        unsubscribeSnapshot = onSnapshot(doc(db, 'appStore', 'globalState'), { includeMetadataChanges: true }, (snapshot) => {
+          if (snapshot.exists() && !snapshot.metadata.hasPendingWrites) {
+            const data = snapshot.data() as any;
+            setState(prev => ({
+              ...prev,
+              groups: data.groups || prev.groups,
+              members: data.members || prev.members,
+              collections: data.collections || prev.collections,
+              transactions: data.transactions || prev.transactions,
+              loans: data.loans || prev.loans,
+              loanRepayments: data.loanRepayments || prev.loanRepayments,
+              resolutions: data.resolutions || prev.resolutions,
+              notices: data.notices || prev.notices,
+              activities: data.activities || prev.activities,
+            }));
+          } else if (!snapshot.exists()) {
+            // Document does not exist yet! If we have any local data, trigger a push.
+            setState(prev => {
+              const hasData = prev.groups.length > 0 || prev.members.length > 0;
+              if (hasData) {
+                return { ...prev, pendingChanges: prev.pendingChanges + 1 };
+              }
+              return prev;
+            });
+          }
+        }, (error) => {
+          console.error("Firestore sync error:", error);
+        });
+      } else {
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
   }, [isLoaded]);
+
+  // Firestore sync: PUSH
+  useEffect(() => {
+    if (isLoaded && state.isOnline && state.pendingChanges > 0) {
+      if (!auth.currentUser) return; // Only push if authenticated
+      
+      setState(prev => ({ ...prev, syncStatus: 'syncing' }));
+      const payload = {
+        groups: state.groups,
+        members: state.members,
+        collections: state.collections,
+        transactions: state.transactions,
+        loans: state.loans,
+        loanRepayments: state.loanRepayments,
+        resolutions: state.resolutions,
+        notices: state.notices,
+        activities: state.activities,
+        updatedAt: new Date().toISOString()
+      };
+      
+      setDoc(doc(db, 'appStore', 'globalState'), payload, { merge: true })
+        .then(() => {
+          setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
+        })
+        .catch(err => {
+          console.error('Sync failed', err);
+          setState(prev => ({ ...prev, syncStatus: 'offline' }));
+        });
+    }
+  }, [
+    isLoaded, 
+    state.isOnline, 
+    state.pendingChanges, 
+    state.groups, 
+    state.members, 
+    state.collections, 
+    state.transactions, 
+    state.loans, 
+    state.loanRepayments, 
+    state.resolutions, 
+    state.notices, 
+    state.activities
+  ]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -158,13 +237,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setActiveGroup = (id: string | null) => updateState({ activeGroupId: id });
   
-  const addGroup = (group: Group) => updateState({ groups: [...state.groups, group], activeGroupId: group.id });
+  const enforceSuperAdmin = () => state.currentUserRole === 'SUPER_ADMIN';
+  const enforceAdminOrAbove = () => state.currentUserRole === 'SUPER_ADMIN' || state.currentUserRole === 'ADMIN';
+
+  const addGroup = (group: Group) => {
+    if (!enforceSuperAdmin()) return;
+    updateState({ groups: [...state.groups, group], activeGroupId: group.id });
+  };
   
-  const addMember = (member: Member) => updateState({ members: [...state.members, member] });
-  const updateMember = (member: Member) => updateState({ members: state.members.map(m => m.id === member.id ? member : m) });
-  const deleteMember = (id: string) => updateState({ members: state.members.filter(m => m.id !== id) });
+  const addMember = (member: Member) => {
+    if (!enforceAdminOrAbove()) return;
+    if (!enforceSuperAdmin()) member.role = 'MEMBER';
+    updateState({ members: [...state.members, member] });
+  };
+  
+  const updateMember = (member: Member) => {
+    const isSelf = state.currentUserId === member.id;
+    if (!enforceAdminOrAbove() && !isSelf) return;
+    
+    // Protect role/auth assignment (only SUPER_ADMIN can change these)
+    if (!enforceSuperAdmin()) {
+      const oldMember = state.members.find(m => m.id === member.id);
+      if (oldMember) {
+        member.role = oldMember.role;
+        member.loginId = oldMember.loginId;
+        member.loginPassword = oldMember.loginPassword;
+      }
+    }
+    
+    updateState({ members: state.members.map(m => m.id === member.id ? member : m) });
+  };
+  
+  const deleteMember = (id: string) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ members: state.members.filter(m => m.id !== id) });
+  };
 
   const saveCollection = (col: Collection) => {
+    if (!enforceAdminOrAbove()) return;
     const existingIndex = state.collections.findIndex(
       c => c.groupId === col.groupId && c.memberId === col.memberId && c.year === col.year && c.month === col.month
     );
@@ -177,32 +287,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addTransaction = (t: Transaction) => updateState({ transactions: [...state.transactions, t] });
-  const updateTransaction = (t: Transaction) => updateState({ transactions: state.transactions.map(tr => tr.id === t.id ? t : tr) });
-  const deleteTransaction = (id: string) => updateState({ transactions: state.transactions.filter(t => t.id !== id) });
+  const addTransaction = (t: Transaction) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ transactions: [...state.transactions, t] });
+  };
+  const updateTransaction = (t: Transaction) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ transactions: state.transactions.map(tr => tr.id === t.id ? t : tr) });
+  };
+  const deleteTransaction = (id: string) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ transactions: state.transactions.filter(t => t.id !== id) });
+  };
   
-  const addLoan = (loan: Loan) => updateState({ loans: [...state.loans, loan] });
-  const updateLoan = (loan: Loan) => updateState({ loans: state.loans.map(l => l.id === loan.id ? loan : l) });
-  const deleteLoan = (id: string) => updateState({ loans: state.loans.filter(l => l.id !== id) });
-  const addRepayment = (rep: LoanRepayment) => updateState({ loanRepayments: [...state.loanRepayments, rep] });
-  const deleteRepayment = (id: string) => updateState({ loanRepayments: state.loanRepayments.filter(r => r.id !== id) });
+  const addLoan = (loan: Loan) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ loans: [...state.loans, loan] });
+  };
+  const updateLoan = (loan: Loan) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ loans: state.loans.map(l => l.id === loan.id ? loan : l) });
+  };
+  const deleteLoan = (id: string) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ loans: state.loans.filter(l => l.id !== id) });
+  };
+  const addRepayment = (rep: LoanRepayment) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ loanRepayments: [...state.loanRepayments, rep] });
+  };
+  const deleteRepayment = (id: string) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ loanRepayments: state.loanRepayments.filter(r => r.id !== id) });
+  };
   
-  const addResolution = (res: Resolution) => updateState({ resolutions: [...state.resolutions, res] });
-  const addNotice = (notice: Notice) => updateState({ notices: [...state.notices, notice] });
-  const addActivity = (activity: Activity) => updateState({ activities: [...state.activities, activity] });
+  const addResolution = (res: Resolution) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ resolutions: [...state.resolutions, res] });
+  };
+  const addNotice = (notice: Notice) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ notices: [...state.notices, notice] });
+  };
+  const addActivity = (activity: Activity) => {
+    if (!enforceAdminOrAbove()) return;
+    updateState({ activities: [...state.activities, activity] });
+  };
+  
   const updateConstitution = (groupId: string, constitution: string) => {
+    if (!enforceSuperAdmin()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, constitution } : g)
     });
   };
 
   const updateGroup = (groupId: string, data: Partial<Group>) => {
+    if (!enforceSuperAdmin()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, ...data } : g)
     });
   };
 
   const deleteGroup = (groupId: string) => {
+    if (!enforceSuperAdmin()) return;
     updateState({
       groups: state.groups.filter(g => g.id !== groupId),
       activeGroupId: state.activeGroupId === groupId ? (state.groups.filter(g => g.id !== groupId)[0]?.id || null) : state.activeGroupId
@@ -210,6 +357,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateGroupLogo = (groupId: string, logo: string) => {
+    if (!enforceSuperAdmin()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, logo } : g)
     });

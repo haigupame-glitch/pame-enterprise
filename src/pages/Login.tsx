@@ -3,7 +3,8 @@ import { auth } from '../lib/firebase';
 import { useAppContext } from '../store/AppContext';
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  signInAnonymously
 } from 'firebase/auth';
 
 export function Login({ onLogin }: { onLogin: () => void }) {
@@ -41,12 +42,13 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     try {
       if (isLogin) {
         // Find local member
-        const checkPhone = phone.toLowerCase();
+        const rawPhone = phone.trim();
+        const checkPhone = rawPhone.toLowerCase();
         const member = members.find(m => 
           (
-            (m.loginId || '').toLowerCase() === checkPhone || 
-            m.contact === phone || 
-            (m.memberNumber || '').toLowerCase() === checkPhone
+            (m.loginId || '').trim().toLowerCase() === checkPhone || 
+            (m.contact || '').trim() === rawPhone || 
+            (m.memberNumber || '').trim().toLowerCase() === checkPhone
           ) && 
           m.loginPassword === password
         );
@@ -55,12 +57,18 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           const memberRole = member.role || 'MEMBER';
           
           if (memberRole === 'SUPER_ADMIN') {
-            const authIdentifier = member.contact || phone;
+            const authIdentifier = member.contact || rawPhone;
             const pseudoEmail = getPseudoEmail(authIdentifier);
             try {
               await signInWithEmailAndPassword(auth, pseudoEmail, password);
             } catch (err) {
               // Ignore if Firebase fails but local check matched.
+            }
+          } else {
+            try {
+              await signInAnonymously(auth);
+            } catch (err) {
+              // Ignore
             }
           }
           
@@ -69,14 +77,15 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           onLogin();
         } else {
           // Fallback check Firebase (for initial super admins without a member record)
-          const pseudoEmail = getPseudoEmail(phone);
+          const pseudoEmail = getPseudoEmail(rawPhone);
           await signInWithEmailAndPassword(auth, pseudoEmail, password);
           setCurrentUserId(null);
           setCurrentUserRole('SUPER_ADMIN');
           onLogin();
         }
       } else {
-        const pseudoEmail = getPseudoEmail(phone);
+        const rawPhone = phone.trim();
+        const pseudoEmail = getPseudoEmail(rawPhone);
         await createUserWithEmailAndPassword(auth, pseudoEmail, password);
         setCurrentUserId(null);
         setCurrentUserRole('SUPER_ADMIN');
