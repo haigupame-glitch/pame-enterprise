@@ -13,10 +13,12 @@ import {
 export function Login({ onLogin }: { onLogin: () => void }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [adminName, setAdminName] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { members, setCurrentUserId, setCurrentUserRole, addMember } = useAppContext();
+  const { members, setCurrentUserId, setCurrentUserRole, addMember, addGroup } = useAppContext();
 
   const getPseudoEmail = (phoneNum: string) => {
     const numbersOnly = phoneNum.replace(/[^0-9]/g, '');
@@ -186,19 +188,26 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         const rawPhone = phone.trim();
         const pseudoEmail = getPseudoEmail(rawPhone);
         
-        let isFirstUser = false;
-        try {
-          const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
-          if (!snapshot.exists() || !(snapshot.data()?.members?.length > 0)) {
-            isFirstUser = true;
+        let isFirstUser = members.length === 0;
+        if (isFirstUser) {
+          try {
+            const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+            if (snapshot.exists() && snapshot.data()?.members?.length > 0) {
+              isFirstUser = false;
+            }
+          } catch(e) {
+            // Ignore, stay with local isFirstUser
           }
-        } catch(e) {
-          // Ignore, fallback to first user if we can't read it
-          isFirstUser = true;
         }
 
         if (!isFirstUser) {
            setError('Sign up is closed. Please ask an Admin to create your account, then Login.');
+           setLoading(false);
+           return;
+        }
+
+        if (!groupName || !adminName) {
+           setError('Group Name and Admin Name are required for new accounts.');
            setLoading(false);
            return;
         }
@@ -216,10 +225,32 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         }
 
         const adminId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
+        const groupId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
         
-        // Layout.tsx will bootstrap their Member object to avoid stale closure issues
+        // Setup initial role so addGroup/addMember doesn't block
         setCurrentUserRole('SUPER_ADMIN');
         setCurrentUserId(adminId);
+
+        // Create the group
+        addGroup({
+          id: groupId,
+          name: groupName,
+          createdDate: new Date().toISOString(),
+          constitution: 'Standard SHG Constitution'
+        });
+
+        // Create the admin member
+        addMember({
+          id: adminId,
+          groupId: groupId,
+          name: adminName,
+          contact: rawPhone,
+          loginId: rawPhone,
+          loginPassword: password,
+          role: 'SUPER_ADMIN',
+          joinDate: new Date().toISOString(),
+          memberNumber: 'ADMIN-01'
+        });
 
         onLogin();
       }
@@ -247,6 +278,32 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         {error && <div className="bg-red-500/20 text-red-500 p-3 rounded-lg mb-4 text-sm font-medium">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLogin && (
+            <>
+              <div>
+                <label className="label-small mb-1 block text-slate-300">Group Name</label>
+                <input
+                  type="text"
+                  value={groupName}
+                  onChange={e => setGroupName(e.target.value)}
+                  placeholder="Enter SHG Group Name"
+                  className="bento-input w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label-small mb-1 block text-slate-300">Your Full Name (Admin)</label>
+                <input
+                  type="text"
+                  value={adminName}
+                  onChange={e => setAdminName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="bento-input w-full"
+                  required
+                />
+              </div>
+            </>
+          )}
           <div>
             <label className="label-small mb-1 block text-slate-300">Login ID (Member ID / Mobile Number)</label>
             <input
@@ -270,7 +327,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             />
           </div>
           <button type="submit" disabled={loading} className="bento-btn bento-btn-primary w-full disabled:opacity-50">
-            {loading ? (isLogin ? 'Logging in...' : 'Creating account...') : (isLogin ? 'Login' : 'Sign Up as SUPER ADMIN')}
+            {loading ? (isLogin ? 'Logging in...' : 'Creating account...') : (isLogin ? 'Login' : 'Create SHG Group & Admin Account')}
           </button>
           
           <button 

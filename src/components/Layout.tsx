@@ -23,26 +23,8 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { members, groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole, currentUserRole, currentUserId, addMember } = useAppContext();
+  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole } = useAppContext();
   const activeGroup = groups.find(g => g.id === activeGroupId);
-
-  // Bootstrap Super Admin Member if missing
-  useEffect(() => {
-    if (currentUserRole === 'SUPER_ADMIN' && currentUserId && !members.find(m => m.id === currentUserId)) {
-      addMember({
-        id: currentUserId,
-        groupId: 'GLOBAL',
-        name: 'Super Admin',
-        contact: auth.currentUser?.email || auth.currentUser?.phoneNumber || 'admin@admin.com',
-        loginId: auth.currentUser?.email || 'admin',
-        loginPassword: 'Encrypted',
-        role: 'SUPER_ADMIN',
-        status: 'active',
-        joinDate: new Date().toISOString(),
-        memberNumber: 'ADMIN-01'
-      });
-    }
-  }, [currentUserRole, currentUserId, members, addMember]);
 
   const handleSignOut = async () => {
     try {

@@ -274,7 +274,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const enforceAdminOrAbove = () => state.currentUserRole === 'SUPER_ADMIN' || state.currentUserRole === 'ADMIN';
 
   const addGroup = (group: Group) => {
-    if (!enforceSuperAdmin()) return;
+    if (state.groups.length > 0 && !enforceSuperAdmin()) return;
     updateState({ groups: [...state.groups, group], activeGroupId: group.id });
   };
   
