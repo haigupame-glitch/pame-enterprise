@@ -1,13 +1,35 @@
-import {StrictMode, Component, ErrorInfo} from 'react';
+import React, {StrictMode, Component, ErrorInfo} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { AppProvider } from './store/AppContext';
 import './index.css';
 
-class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+// Catch global errors before React
+window.addEventListener('error', (event) => {
+  const root = document.getElementById('root');
+  if (root && root.innerHTML === '') {
+    root.innerHTML = `<div style="color:red; padding:20px; background:black; min-height:100vh;">
+      <h2>Fatal Error</h2>
+      <pre>${event.error?.stack || event.message}</pre>
+    </div>`;
+  }
+});
+window.addEventListener('unhandledrejection', (event) => {
+  const root = document.getElementById('root');
+  if (root && root.innerHTML === '') {
+    root.innerHTML = `<div style="color:red; padding:20px; background:black; min-height:100vh;">
+      <h2>Unhandled Promise Rejection</h2>
+      <pre>${event.reason?.stack || event.reason}</pre>
+    </div>`;
+  }
+});
+
+class ErrorBoundary extends React.Component<any, {hasError: boolean, error: any}> {
+  props: any;
+  state = { hasError: false, error: null };
   constructor(props: any) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.props = props;
   }
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };

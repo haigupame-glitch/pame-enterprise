@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2, Wifi, WifiOff, RefreshCw, CloudCheck } from 'lucide-react';
 import { useAppContext } from '../store/AppContext';
 import { cn } from '../lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Role } from '../types';
 import { auth } from '../lib/firebase';
 
@@ -22,8 +22,26 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole } = useAppContext();
+  const { members, groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole, currentUserRole, currentUserId, addMember } = useAppContext();
   const activeGroup = groups.find(g => g.id === activeGroupId);
+
+  // Bootstrap Super Admin Member if missing
+  useEffect(() => {
+    if (currentUserRole === 'SUPER_ADMIN' && currentUserId && !members.find(m => m.id === currentUserId)) {
+      addMember({
+        id: currentUserId,
+        groupId: 'GLOBAL',
+        name: 'Super Admin',
+        contact: auth.currentUser?.email || auth.currentUser?.phoneNumber || 'admin@admin.com',
+        loginId: auth.currentUser?.email || 'admin',
+        loginPassword: 'Encrypted',
+        role: 'SUPER_ADMIN',
+        status: 'active',
+        joinDate: new Date().toISOString(),
+        memberNumber: 'ADMIN-01'
+      });
+    }
+  }, [currentUserRole, currentUserId, members, addMember]);
 
   const handleSignOut = async () => {
     try {
@@ -133,7 +151,7 @@ function RoleDisplay() {
   return (
     <div className="flex items-center gap-2">
       <div className="py-1 px-3 text-xs font-bold bg-slate-800 text-orange-400 rounded-md border border-slate-700/50 shadow-inner select-none truncate">
-        {currentUserRole.replace('_', ' ')}
+        {currentUserRole ? currentUserRole.replace('_', ' ') : 'MEMBER'}
       </div>
       
       {currentMember && (

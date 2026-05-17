@@ -17,11 +17,7 @@ import { Reports } from './pages/Reports';
 import { Login } from './pages/Login';
 
 export default function App() {
-  const { currentUserId, currentUserRole, isLoaded } = useAppContext();
-
-  if (!isLoaded) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
-  }
+  const { currentUserId, currentUserRole } = useAppContext();
 
   const isAuthenticated = !!currentUserId || currentUserRole === 'SUPER_ADMIN';
 

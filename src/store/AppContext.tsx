@@ -77,7 +77,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Load from localforage instead of localStorage, fallback to localStorage if needed initially
     async function loadState() {
       try {
-        let savedState: any = await localforage.getItem('shg_app_data');
+        let savedState: any = null;
+        try {
+          let timeoutId: NodeJS.Timeout;
+          const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Timeout loading localforage')), 3000);
+          });
+          // Attach a dummy catch to prevent UnhandledPromiseRejection if it rejects later
+          timeoutPromise.catch(() => {});
+          
+          try {
+            savedState = await Promise.race([
+              localforage.getItem('shg_app_data'),
+              timeoutPromise
+            ]);
+          } finally {
+            clearTimeout(timeoutId!);
+          }
+        } catch (e) {
+          console.warn('localforage load failed or timed out', e);
+        }
+        
         if (!savedState) {
           // Check localStorage for migration
           const legacySaved = localStorage.getItem('shg_app_data');
@@ -91,7 +111,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setState({ ...defaultState, ...savedState, isOnline: navigator.onLine, syncStatus: navigator.onLine ? 'synced' : 'offline', pendingChanges: savedState.pendingChanges || 0 });
         }
       } catch (e) {
-        console.error('Failed to parse saved data', e);
+        console.error('Failed to parse saved data or timeout', e);
+        // If it hangs, we'll hit this and just use default state
       } finally {
         setIsLoaded(true);
       }
@@ -252,8 +273,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const addMember = (member: Member) => {
-    if (!enforceAdminOrAbove()) return;
-    if (!enforceSuperAdmin()) member.role = 'MEMBER';
+    if (state.members.length > 0 && !enforceAdminOrAbove()) return;
+    if (state.members.length > 0 && !enforceSuperAdmin()) member.role = 'MEMBER';
     updateState({ members: [...state.members, member] });
   };
   
