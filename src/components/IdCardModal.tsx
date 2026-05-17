@@ -4,7 +4,7 @@ import { X, Download, Upload, Camera, Building } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Member, Group } from '../types';
 import { useAppContext } from '../store/AppContext';
-import { cn } from '../lib/utils';
+import { cn, resizeImage } from '../lib/utils';
 
 interface IdCardModalProps {
   member: Member;
@@ -35,26 +35,30 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
     }
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
+    try {
+      const result = await resizeImage(file, 400); // 400px width is enough for an ID photo
       updateMember({ ...member, photoUrl: result });
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to resize/upload photo', err);
+      alert('Failed to process image');
+    }
+    e.target.value = '';
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
+    try {
+      const result = await resizeImage(file, 400); // 400px width is enough for logo
       updateGroup(group.id, { logo: result });
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to resize/upload logo', err);
+      alert('Failed to process image');
+    }
+    e.target.value = '';
   };
 
   const groupNameLength = group.name?.length || 0;

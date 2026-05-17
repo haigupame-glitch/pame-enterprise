@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { generateId, formatCurrency } from '../lib/utils';
+import { generateId, formatCurrency, resizeImage } from '../lib/utils';
 import { format } from 'date-fns';
 import { Upload, X } from 'lucide-react';
 
@@ -21,18 +21,18 @@ export function Activities() {
 
   const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     
-    Array.from(files).forEach((file: File) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
+    for (const file of Array.from(files) as File[]) {
+      try {
+        const result = await resizeImage(file, 800);
         setPhotos(prev => [...prev, result]);
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.error('Failed to resize log', err);
+      }
+    }
   };
 
   const removePhoto = (index: number) => {

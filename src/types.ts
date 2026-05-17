@@ -101,3 +101,13 @@ export interface Activity {
   cost: number;
   photoUrls?: string[];
 }
+
+export interface Feedback {
+  id: string;
+  userId: string;
+  groupId: string; // 'GLOBAL' if no group selected
+  date: string;
+  type: 'Bug' | 'Feature Request' | 'Other';
+  text: string;
+  status: 'Open' | 'Closed';
+}

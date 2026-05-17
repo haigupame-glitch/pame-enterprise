@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2, Wifi, WifiOff, RefreshCw, CloudCheck } from 'lucide-react';
+import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2, Wifi, WifiOff, RefreshCw, CloudCheck, MessageSquare } from 'lucide-react';
 import { useAppContext } from '../store/AppContext';
 import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
@@ -19,6 +19,7 @@ const navigation = [
   { name: 'Resolutions', to: '/resolutions', icon: FileSignature, defaultGroupNeeds: true },
   { name: 'Notices', to: '/notices', icon: Send, defaultGroupNeeds: true },
   { name: 'Reports', to: '/reports', icon: BarChart3, defaultGroupNeeds: true },
+  { name: 'Feedback', to: '/feedback', icon: MessageSquare },
 ];
 
 export function Layout() {

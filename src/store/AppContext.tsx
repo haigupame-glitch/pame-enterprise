@@ -3,7 +3,7 @@ import localforage from 'localforage';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
-import type { Group, Member, Collection, Transaction, Loan, LoanRepayment, Resolution, Notice, Activity, Role } from '../types';
+import type { Group, Member, Collection, Transaction, Loan, LoanRepayment, Resolution, Notice, Activity, Role, Feedback } from '../types';
 
 interface AppState {
   groups: Group[];
@@ -15,6 +15,7 @@ interface AppState {
   resolutions: Resolution[];
   notices: Notice[];
   activities: Activity[];
+  feedbacks: Feedback[];
   activeGroupId: string | null;
   currentUserRole: Role | null;
   currentUserId: string | null;
@@ -43,6 +44,7 @@ interface AppContextType extends AppState {
   addResolution: (resolution: Resolution) => void;
   addNotice: (notice: Notice) => void;
   addActivity: (activity: Activity) => void;
+  addFeedback: (feedback: Feedback) => void;
   updateGroup: (groupId: string, data: Partial<Group>) => void;
   deleteGroup: (groupId: string) => void;
   updateConstitution: (groupId: string, constitution: string) => void;
@@ -59,6 +61,7 @@ const defaultState: AppState = {
   resolutions: [],
   notices: [],
   activities: [],
+  feedbacks: [],
   activeGroupId: null,
   currentUserRole: null,
   currentUserId: null,
@@ -162,6 +165,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               resolutions: data.resolutions || prev.resolutions,
               notices: data.notices || prev.notices,
               activities: data.activities || prev.activities,
+              feedbacks: data.feedbacks || prev.feedbacks,
             }));
           } else if (!snapshot.exists()) {
             // Document does not exist yet! If we have any local data, trigger a push.
@@ -205,6 +209,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           resolutions: state.resolutions,
           notices: state.notices,
           activities: state.activities,
+          feedbacks: state.feedbacks,
           updatedAt: new Date().toISOString()
         };
         
@@ -232,7 +237,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.loanRepayments, 
     state.resolutions, 
     state.notices, 
-    state.activities
+    state.activities,
+    state.feedbacks
   ]);
 
   useEffect(() => {
@@ -361,6 +367,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updateState({ activities: [...state.activities, activity] });
   };
   
+  const addFeedback = (feedback: Feedback) => {
+    updateState({ feedbacks: [...state.feedbacks, feedback] });
+  };
+  
   const updateConstitution = (groupId: string, constitution: string) => {
     if (!enforceSuperAdmin()) return;
     updateState({
@@ -416,6 +426,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addResolution,
       addNotice,
       addActivity,
+      addFeedback,
       updateGroup,
       deleteGroup,
       updateConstitution,

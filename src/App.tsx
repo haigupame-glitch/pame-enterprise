@@ -15,6 +15,7 @@ import { Notices } from './pages/Notices';
 import { Activities } from './pages/Activities';
 import { Reports } from './pages/Reports';
 import { Login } from './pages/Login';
+import { Feedback } from './pages/Feedback';
 
 export default function App() {
   const { currentUserId, currentUserRole } = useAppContext();
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="notices" element={<Notices />} />
           <Route path="activities" element={<Activities />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="feedback" element={<Feedback />} />
         </Route>
       </Routes>
     </BrowserRouter>
