@@ -138,7 +138,7 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
             </div>
 
             {/* Right Column (Details) */}
-            <div className="flex-1 h-full px-7 py-7 flex flex-col relative bg-white">
+            <div className="flex-1 h-full pt-7 pl-7 pr-6 pb-[40px] flex flex-col relative bg-white">
               {/* Background Watermark (Optional) */}
               <div className="absolute top-1/2 right-4 transform -translate-y-1/2 opacity-[0.03] pointer-events-none">
                 {group.logo ? (
@@ -149,7 +149,7 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
               </div>
 
               {/* Header Text */}
-              <div className="relative z-10 mb-4 border-b border-emerald-100 pb-2">
+              <div className="relative z-10 mb-4 border-b border-emerald-100 pb-2 shrink-0">
                 <h1 className={cn("font-bold text-emerald-900 leading-tight tracking-wide drop-shadow-sm break-words line-clamp-2", groupNameSizeClass)}>
                   {group.name}
                 </h1>
@@ -157,45 +157,48 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
               </div>
 
               {/* Member Name */}
-              <div className="relative z-10 mb-2">
+              <div className="relative z-10 mb-2 shrink-0">
                 <h2 className={cn("font-bold text-gray-900 leading-snug line-clamp-2", memberNameSizeClass)}>{member.name}</h2>
                 <div className="text-[10px] font-bold text-emerald-700/80 tracking-widest uppercase bg-emerald-50 px-2.5 py-0.5 inline-block rounded-md border border-emerald-100/50 mt-1">
                   Active Member
                 </div>
               </div>
 
-              {/* Member Details */}
-              <div className="relative z-10 w-full mt-auto space-y-2 mb-14">
-                <div className="grid grid-cols-[65px_1fr] text-left text-xs items-center gap-1">
-                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">ID NO</span>
-                  <span className="font-mono text-gray-800 font-semibold">{member.memberNumber || member.id.substring(0, 8)}</span>
-                </div>
-                {member.contact && (
+              {/* Lower Section Wrapper */}
+              <div className="relative z-10 w-full mt-auto flex flex-col min-h-0">
+                {/* Member Details */}
+                <div className="space-y-1.5 mb-2.5">
                   <div className="grid grid-cols-[65px_1fr] text-left text-xs items-center gap-1">
-                    <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">PHONE</span>
-                    <span className="font-mono text-gray-800 font-semibold tracking-wide">{member.contact}</span>
+                    <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">ID NO</span>
+                    <span className="font-mono text-gray-800 font-semibold">{member.memberNumber || member.id.substring(0, 8)}</span>
                   </div>
-                )}
-                {member.address && (
-                  <div className="grid grid-cols-[65px_1fr] text-left text-xs items-start gap-1">
-                    <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px] pt-0.5">ADDRESS</span>
-                    <span className={cn("font-medium leading-snug break-words text-gray-800", addressSizeClass)} style={{ letterSpacing: '0.01em' }}>{member.address}</span>
+                  {member.contact && (
+                    <div className="grid grid-cols-[65px_1fr] text-left text-xs items-center gap-1">
+                      <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">PHONE</span>
+                      <span className="font-mono text-gray-800 font-semibold tracking-wide">{member.contact}</span>
+                    </div>
+                  )}
+                  {member.address && (
+                    <div className="grid grid-cols-[65px_1fr] text-left text-xs items-start gap-1">
+                      <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px] pt-0.5">ADDRESS</span>
+                      <span className={cn("font-medium leading-snug break-words text-gray-800", addressSizeClass)} style={{ letterSpacing: '0.01em' }}>{member.address}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Group Contact Info */}
+                {(group.contact || group.email) && (
+                  <div className="flex flex-col justify-end text-[9px] text-gray-500 border-t border-slate-100 pt-1.5 shrink-0">
+                     <div className="flex items-center justify-between gap-1">
+                       <span className="font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">Group Contact:</span>
+                       <span className="font-mono font-medium text-emerald-700/90 line-clamp-1 text-right tracking-tight">{[group.contact, group.email].filter(Boolean).join(' • ')}</span>
+                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Group Contact Info */}
-              {(group.contact || group.email) && (
-                <div className="absolute bottom-[44px] left-7 right-7 flex flex-col justify-end text-[9px] text-gray-500 border-t border-slate-100 pt-1.5 bg-white z-20">
-                   <div className="flex items-center justify-between gap-2">
-                     <span className="font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">Group Contact:</span>
-                     <span className="font-mono font-medium text-emerald-700/90 line-clamp-1 text-right tracking-tight">{[group.contact, group.email].filter(Boolean).join(' • ')}</span>
-                   </div>
-                </div>
-              )}
-
               {/* Card Footer */}
-              <div className="absolute bottom-0 right-0 w-[calc(100%-160px)] h-[36px] bg-slate-50 flex items-center justify-between px-6 text-slate-400 text-[10px] font-mono border-t border-slate-200">
+              <div className="absolute bottom-0 right-0 w-full h-[36px] bg-slate-50 flex items-center justify-between pl-7 pr-6 text-slate-400 text-[10px] font-mono border-t border-slate-200 shrink-0">
                 <span className="flex items-center tracking-wider text-[9px]">
                   Issued: <span className="text-slate-700 font-medium ml-1">{member.idIssueDate ? format(new Date(member.idIssueDate), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy')}</span>
                 </span>
