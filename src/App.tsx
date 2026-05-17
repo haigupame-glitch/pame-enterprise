@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAppContext } from './store/AppContext';
 import { Layout } from './components/Layout';
-import { auth } from './lib/firebase';
-
 // Placeholder Pages
 import { Dashboard } from './pages/Dashboard';
 import { Groups } from './pages/Groups';
@@ -19,23 +17,13 @@ import { Reports } from './pages/Reports';
 import { Login } from './pages/Login';
 
 export default function App() {
-  const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const { currentUserId } = useAppContext();
+  const { currentUserId, currentUserRole, isLoaded } = useAppContext();
 
-  useEffect(() => {
-    const unsub = auth.onAuthStateChanged((user) => {
-      setIsFirebaseAuthenticated(!!user);
-      setLoading(false);
-    });
-    return unsub;
-  }, []);
-
-  if (loading) {
+  if (!isLoaded) {
     return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
   }
 
-  const isAuthenticated = isFirebaseAuthenticated || !!currentUserId;
+  const isAuthenticated = !!currentUserId || currentUserRole === 'SUPER_ADMIN';
 
   if (!isAuthenticated) {
     return <Login onLogin={() => {}} />;

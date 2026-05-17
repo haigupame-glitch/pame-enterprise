@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAppContext } from '../store/AppContext';
 import { 
   signInWithEmailAndPassword, 
@@ -15,18 +16,13 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   const [loading, setLoading] = useState(false);
   const { members, setCurrentUserId, setCurrentUserRole } = useAppContext();
 
-  // Auto-login if auth state changes
-  useEffect(() => {
-    const unsub = auth.onAuthStateChanged((user) => {
-      if (user) {
-        onLogin();
-      }
-    });
-    return unsub;
-  }, [onLogin]);
-
   const getPseudoEmail = (phoneNum: string) => {
-    return `${phoneNum.replace(/[^0-9]/g, '')}@shg.app.local`;
+    const numbersOnly = phoneNum.replace(/[^0-9]/g, '');
+    if (numbersOnly.length > 0) {
+      return `${numbersOnly}@shg.app.local`;
+    }
+    const sanitized = phoneNum.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `${sanitized || 'admin'}@shg.app.local`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,19 +52,19 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         if (member) {
           const memberRole = member.role || 'MEMBER';
           
-          if (memberRole === 'SUPER_ADMIN') {
-            const authIdentifier = member.contact || rawPhone;
-            const pseudoEmail = getPseudoEmail(authIdentifier);
-            try {
-              await signInWithEmailAndPassword(auth, pseudoEmail, password);
-            } catch (err) {
-              // Ignore if Firebase fails but local check matched.
-            }
-          } else {
-            try {
-              await signInAnonymously(auth);
-            } catch (err) {
-              // Ignore
+          const authIdentifier = member.contact || member.loginId || rawPhone;
+          const pseudoEmail = getPseudoEmail(authIdentifier);
+          try {
+            await signInWithEmailAndPassword(auth, pseudoEmail, password);
+          } catch (err: any) {
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
+              try {
+                await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+              } catch (createErr) {
+                console.error('Failed to create background auth', createErr);
+              }
+            } else {
+              throw err;
             }
           }
           
@@ -76,17 +72,87 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           setCurrentUserRole(memberRole);
           onLogin();
         } else {
-          // Fallback check Firebase (for initial super admins without a member record)
+          // Fallback check Firebase (if app storage was cleared but member exists in DB)
           const pseudoEmail = getPseudoEmail(rawPhone);
-          await signInWithEmailAndPassword(auth, pseudoEmail, password);
-          setCurrentUserId(null);
-          setCurrentUserRole('SUPER_ADMIN');
+          
+          try {
+            await signInWithEmailAndPassword(auth, pseudoEmail, password);
+          } catch (err: any) {
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
+              try {
+                await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+              } catch (createErr) {
+                console.error('Failed to create background auth', createErr);
+                throw err;
+              }
+            } else {
+              throw err;
+            }
+          }
+          
+          let resolvedId: string | null = null;
+          let resolvedRole: any = 'MEMBER';
+
+          try {
+            const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+            if (snapshot.exists()) {
+              const data = snapshot.data();
+              const dbMembers = data.members || [];
+              if (dbMembers.length === 0) {
+                 resolvedRole = 'SUPER_ADMIN'; // First user recovery
+              } else {
+                const foundMember = dbMembers.find((m: any) => 
+                  (m.loginId || '').trim().toLowerCase() === checkPhone || 
+                  (m.contact || '').trim() === rawPhone || 
+                  (m.memberNumber || '').trim().toLowerCase() === checkPhone
+                );
+                if (foundMember) {
+                  resolvedId = foundMember.id;
+                  resolvedRole = foundMember.role || 'MEMBER';
+                } else {
+                  throw new Error('Member not found in database');
+                }
+              }
+            } else {
+              resolvedRole = 'SUPER_ADMIN';
+            }
+          } catch(err) {
+            console.error('Failed to resolve member from db', err);
+            throw err; // cascade to error UI
+          }
+
+          setCurrentUserId(resolvedId);
+          setCurrentUserRole(resolvedRole);
           onLogin();
         }
       } else {
+        // Sign Up
         const rawPhone = phone.trim();
         const pseudoEmail = getPseudoEmail(rawPhone);
+        
+        // We only allow Sign Up to create a SUPER_ADMIN if the app is entirely empty.
+        // Members must be created by Admin.
         await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+
+        let isFirstUser = false;
+        try {
+          const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+          if (!snapshot.exists() || !(snapshot.data()?.members?.length > 0)) {
+            isFirstUser = true;
+          }
+        } catch(e) {
+          // Ignore, fallback to first user if we can't read it
+          isFirstUser = true;
+        }
+
+        if (!isFirstUser) {
+           // We created an auth record, but they aren't the first user.
+           // They are stuck now because sign up is closed.
+           setError('Sign up is closed. Please ask an Admin to create your account, then Login.');
+           setLoading(false);
+           return;
+        }
+
         setCurrentUserId(null);
         setCurrentUserRole('SUPER_ADMIN');
         onLogin();

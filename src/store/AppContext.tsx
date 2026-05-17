@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import localforage from 'localforage';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import type { Group, Member, Collection, Transaction, Loan, LoanRepayment, Resolution, Notice, Activity, Role } from '../types';
 
@@ -15,7 +16,7 @@ interface AppState {
   notices: Notice[];
   activities: Activity[];
   activeGroupId: string | null;
-  currentUserRole: Role;
+  currentUserRole: Role | null;
   currentUserId: string | null;
   isOnline: boolean;
   syncStatus: 'synced' | 'syncing' | 'offline';
@@ -23,7 +24,7 @@ interface AppState {
 }
 
 interface AppContextType extends AppState {
-  setCurrentUserRole: (role: Role) => void;
+  setCurrentUserRole: (role: Role | null) => void;
   setCurrentUserId: (id: string | null) => void;
   setActiveGroup: (id: string | null) => void;
   addGroup: (group: Group) => void;
@@ -59,7 +60,7 @@ const defaultState: AppState = {
   notices: [],
   activities: [],
   activeGroupId: null,
-  currentUserRole: 'SUPER_ADMIN',
+  currentUserRole: null,
   currentUserId: null,
   isOnline: navigator.onLine,
   syncStatus: navigator.onLine ? 'synced' : 'offline',
@@ -237,7 +238,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const setCurrentUserRole = (role: Role) => updateState({ currentUserRole: role });
+  const setCurrentUserRole = (role: Role | null) => updateState({ currentUserRole: role });
   const setCurrentUserId = (id: string | null) => updateState({ currentUserId: id });
 
   const setActiveGroup = (id: string | null) => updateState({ activeGroupId: id });
