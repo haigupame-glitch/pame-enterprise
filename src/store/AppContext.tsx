@@ -171,27 +171,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!auth.currentUser) return; // Only push if authenticated
       
       setState(prev => ({ ...prev, syncStatus: 'syncing' }));
-      const payload = {
-        groups: state.groups,
-        members: state.members,
-        collections: state.collections,
-        transactions: state.transactions,
-        loans: state.loans,
-        loanRepayments: state.loanRepayments,
-        resolutions: state.resolutions,
-        notices: state.notices,
-        activities: state.activities,
-        updatedAt: new Date().toISOString()
-      };
       
-      setDoc(doc(db, 'appStore', 'globalState'), payload, { merge: true })
-        .then(() => {
-          setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
-        })
-        .catch(err => {
-          console.error('Sync failed', err);
-          setState(prev => ({ ...prev, syncStatus: 'offline' }));
-        });
+      const timer = setTimeout(() => {
+        const payload = {
+          groups: state.groups,
+          members: state.members,
+          collections: state.collections,
+          transactions: state.transactions,
+          loans: state.loans,
+          loanRepayments: state.loanRepayments,
+          resolutions: state.resolutions,
+          notices: state.notices,
+          activities: state.activities,
+          updatedAt: new Date().toISOString()
+        };
+        
+        setDoc(doc(db, 'appStore', 'globalState'), payload, { merge: true })
+          .then(() => {
+            setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
+          })
+          .catch(err => {
+            console.error('Sync failed', err);
+            setState(prev => ({ ...prev, syncStatus: 'offline' }));
+          });
+      }, 2000); // Debounce for 2 seconds
+
+      return () => clearTimeout(timer);
     }
   }, [
     isLoaded, 
@@ -224,7 +229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       const newState = { ...prev, ...updates };
       
-      if (isMutation && !prev.isOnline) {
+      if (isMutation) {
         newState.pendingChanges = prev.pendingChanges + 1;
       }
       
