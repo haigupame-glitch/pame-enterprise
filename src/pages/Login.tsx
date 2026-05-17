@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../lib/firebase';
+import { useAppContext } from '../store/AppContext';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword
@@ -11,6 +12,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { members, setCurrentUserId, setCurrentUserRole, activeGroupId, groups } = useAppContext();
 
   // Auto-login if auth state changes
   useEffect(() => {
@@ -37,14 +39,28 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     setError('');
 
     try {
-      const pseudoEmail = getPseudoEmail(phone);
-      
       if (isLogin) {
+        // First try to authenticate as a local member
+        const member = members.find(m => m.loginId === phone && m.loginPassword === password);
+        if (member) {
+          // If we find a member, assume they are a MEMBER user
+          setCurrentUserId(member.id);
+          setCurrentUserRole('MEMBER');
+          onLogin();
+          return;
+        }
+
+        // If not a local member, fallback to Firebase auth (for SUPER_ADMIN/ADMIN)
+        const pseudoEmail = getPseudoEmail(phone);
         await signInWithEmailAndPassword(auth, pseudoEmail, password);
+        setCurrentUserRole('SUPER_ADMIN'); // Default to super admin for firebase users for demo
+        onLogin();
       } else {
+        const pseudoEmail = getPseudoEmail(phone);
         await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+        setCurrentUserRole('SUPER_ADMIN');
+        onLogin();
       }
-      onLogin(); // The effect will also trigger this, but just in case
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {

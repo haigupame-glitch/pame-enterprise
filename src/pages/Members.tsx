@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { generateId } from '../lib/utils';
 import { format } from 'date-fns';
-import { Trash2, Edit2, Check, X, IdCard } from 'lucide-react';
+import { Trash2, Edit2, Check, X, IdCard, Key } from 'lucide-react';
 import { IdCardModal } from '../components/IdCardModal';
+import { MemberLoginModal } from '../components/MemberLoginModal';
 
 export function Members() {
   const { members, groups, activeGroupId, addMember, updateMember, deleteMember, currentUserRole, currentUserId } = useAppContext();
@@ -16,6 +17,7 @@ export function Members() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', memberNumber: '', contact: '', address: '', aadharNumber: '' });
   const [selectedMemberForId, setSelectedMemberForId] = useState<any | null>(null);
+  const [selectedMemberForLogin, setSelectedMemberForLogin] = useState<any | null>(null);
 
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
   const activeGroup = groups.find(g => g.id === activeGroupId);
@@ -201,6 +203,11 @@ export function Members() {
                       {(canAddMember || currentUserRole === 'MEMBER') && (
                         <td className="text-right">
                           <div className="flex justify-end gap-2 items-center">
+                            {currentUserRole === 'SUPER_ADMIN' && (
+                              <button onClick={() => setSelectedMemberForLogin(member)} className="text-orange-400 hover:text-orange-300 p-1 transition-colors" title="Manage Login">
+                                <Key className="w-4 h-4" />
+                              </button>
+                            )}
                             {canEditMember(member.id) && (
                               <button onClick={() => startEdit(member)} className="text-app-primary hover:text-blue-400 p-1 transition-colors" title="Edit">
                                 <Edit2 className="w-4 h-4" />
@@ -247,6 +254,13 @@ export function Members() {
           member={selectedMemberForId}
           group={activeGroup}
           onClose={() => setSelectedMemberForId(null)}
+        />
+      )}
+      
+      {selectedMemberForLogin && (
+        <MemberLoginModal
+          member={selectedMemberForLogin}
+          onClose={() => setSelectedMemberForLogin(null)}
         />
       )}
     </div>

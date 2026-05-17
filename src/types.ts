@@ -27,6 +27,8 @@ export interface Member {
   joinDate: string;
   photoUrl?: string;
   idIssueDate?: string;
+  loginId?: string;
+  loginPassword?: string;
 }
 
 export interface Collection {

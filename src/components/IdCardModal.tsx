@@ -165,7 +165,7 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
               </div>
 
               {/* Member Details */}
-              <div className="relative z-10 w-full mt-auto space-y-1.5 mb-10">
+              <div className="relative z-10 w-full mt-auto space-y-1.5 mb-12">
                 <div className="grid grid-cols-[70px_1fr] text-left text-xs items-center">
                   <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">ID NO</span>
                   <span className="font-mono text-gray-800 font-semibold">{member.memberNumber || member.id.substring(0, 8)}</span>
