@@ -10,7 +10,7 @@ interface Props {
 
 export function MemberLoginModal({ member, onClose }: Props) {
   const { updateMember } = useAppContext();
-  const [loginId, setLoginId] = useState(member.loginId || member.contact || '');
+  const [loginId, setLoginId] = useState(member.loginId || member.memberNumber || member.contact || '');
   const [password, setPassword] = useState(member.loginPassword || '');
   const [role, setRole] = useState(member.role || 'MEMBER');
   const [showSaved, setShowSaved] = useState(false);
@@ -49,7 +49,7 @@ export function MemberLoginModal({ member, onClose }: Props) {
 
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="label-small mb-1 block">Login ID (Phone)</label>
+            <label className="label-small mb-1 block">Login ID (ID No / Phone)</label>
             <input
               type="text"
               required
@@ -76,10 +76,12 @@ export function MemberLoginModal({ member, onClose }: Props) {
             <select
               value={role}
               onChange={e => setRole(e.target.value as any)}
-              className="bento-select w-full"
+              className="bento-select w-full disabled:opacity-75"
+              disabled={member.role === 'SUPER_ADMIN'}
             >
               <option value="MEMBER">Member</option>
               <option value="ADMIN">Admin</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
             </select>
           </div>
           

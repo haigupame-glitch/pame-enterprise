@@ -22,8 +22,18 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { groups, activeGroupId, setActiveGroup } = useAppContext();
+  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole } = useAppContext();
   const activeGroup = groups.find(g => g.id === activeGroupId);
+
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+    } catch(err) {
+      console.error(err);
+    }
+    setCurrentUserId(null);
+    setCurrentUserRole('MEMBER');
+  };
 
   return (
     <div className="flex bg-app-bg text-app-text font-sans selection:bg-app-primary selection:text-white print:block print:h-auto print:bg-white h-screen">
@@ -99,7 +109,7 @@ export function Layout() {
               <RoleDisplay />
             </div>
             <button 
-              onClick={() => auth.signOut()}
+              onClick={handleSignOut}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors border border-red-400/20"
             >
               <LogOut className="w-4 h-4" />
@@ -126,7 +136,7 @@ function RoleDisplay() {
         {currentUserRole.replace('_', ' ')}
       </div>
       
-      {currentUserRole === 'MEMBER' && currentMember && (
+      {currentMember && (
         <div className="py-1 px-3 text-xs font-semibold bg-slate-700/50 text-white rounded-md border border-slate-600/50 truncate max-w-[150px]" title={currentMember.name}>
           {currentMember.name}
         </div>

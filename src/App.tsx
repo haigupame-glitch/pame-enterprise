@@ -38,7 +38,7 @@ export default function App() {
   const isAuthenticated = isFirebaseAuthenticated || !!currentUserId;
 
   if (!isAuthenticated) {
-    return <Login onLogin={() => setIsFirebaseAuthenticated(true)} />;
+    return <Login onLogin={() => {}} />;
   }
 
   return (

@@ -3,6 +3,7 @@ import { useAppContext } from '../store/AppContext';
 import { generateId } from '../lib/utils';
 import { format } from 'date-fns';
 import { Trash2, Edit2, Check, X, IdCard, Key } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { IdCardModal } from '../components/IdCardModal';
 import { MemberLoginModal } from '../components/MemberLoginModal';
 
@@ -34,7 +35,7 @@ export function Members() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !activeGroupId) return;
+    if (!name.trim() || !activeGroupId || !memberNumber.trim() || !contact.trim() || !aadharNumber.trim()) return;
     
     addMember({
       id: generateId(),
@@ -65,7 +66,7 @@ export function Members() {
   };
 
   const saveEdit = (member: any) => {
-    if (!editForm.name.trim()) return;
+    if (!editForm.name.trim() || !editForm.memberNumber.trim() || !editForm.contact.trim() || !editForm.aadharNumber.trim()) return;
     updateMember({
       ...member,
       name: editForm.name.trim(),
@@ -92,9 +93,10 @@ export function Members() {
             <div className="card-header">ADD MEMBER</div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
               <div className="lg:col-span-1">
-                <label className="label-small mb-1 block">Member ID No.</label>
+                <label className="label-small mb-1 block">Member ID No. *</label>
                 <input
                   type="text"
+                  required
                   value={memberNumber}
                   onChange={e => setMemberNumber(e.target.value)}
                   className="bento-input font-mono"
@@ -113,9 +115,10 @@ export function Members() {
                 />
               </div>
               <div className="lg:col-span-1">
-                <label className="label-small mb-1 block">Contact No.</label>
+                <label className="label-small mb-1 block">Contact No. *</label>
                 <input
                   type="text"
+                  required
                   value={contact}
                   onChange={e => setContact(e.target.value)}
                   className="bento-input"
@@ -123,9 +126,10 @@ export function Members() {
                 />
               </div>
               <div className="lg:col-span-1">
-                <label className="label-small mb-1 block">Aadhar No.</label>
+                <label className="label-small mb-1 block">Identity/Aadhar No. *</label>
                 <input
                   type="text"
+                  required
                   value={aadharNumber}
                   onChange={e => setAadharNumber(e.target.value)}
                   className="bento-input font-mono"
@@ -195,7 +199,21 @@ export function Members() {
                   ) : (
                     <>
                       <td className="font-mono font-medium text-emerald-400">{member.memberNumber || '-'}</td>
-                      <td className="font-bold">{member.name}</td>
+                      <td className="font-bold">
+                        <div className="flex items-center gap-2">
+                          {member.name}
+                          <span className={cn(
+                            "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
+                            !member.role || member.role === 'MEMBER' 
+                              ? "bg-slate-700/50 text-slate-300 border-slate-600/50"
+                              : member.role === 'SUPER_ADMIN' 
+                                ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                                : "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                          )}>
+                            {(member.role || 'MEMBER').replace('_', ' ')}
+                          </span>
+                        </div>
+                      </td>
                       <td className="font-mono text-sm">{member.contact || '-'}</td>
                       <td className="font-mono text-sm">{member.aadharNumber || '-'}</td>
                       <td className="text-sm">{member.address || '-'}</td>
