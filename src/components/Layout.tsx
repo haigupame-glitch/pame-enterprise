@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2 } from 'lucide-react';
+import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2, Wifi, WifiOff, RefreshCw, CloudCheck } from 'lucide-react';
 import { useAppContext } from '../store/AppContext';
 import { cn } from '../lib/utils';
 import { useState } from 'react';
@@ -87,9 +87,12 @@ export function Layout() {
       {/* Main content */}
       <div className="flex-1 overflow-hidden flex flex-col print:overflow-visible">
         <header className="bg-app-card border-b border-app-border px-8 py-4 flex items-center justify-between shrink-0 print:hidden">
-          <h2 className="text-lg font-semibold tracking-tight text-app-text">
-            {activeGroup ? activeGroup.name : 'Welcome'}
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold tracking-tight text-app-text">
+              {activeGroup ? activeGroup.name : 'Welcome'}
+            </h2>
+            <SyncIndicator />
+          </div>
           {/* Role Switcher for Testing */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -155,3 +158,34 @@ function RoleSwitcher() {
     </div>
   );
 }
+
+function SyncIndicator() {
+  const { isOnline, syncStatus, pendingChanges } = useAppContext();
+
+  if (!isOnline) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20 text-xs font-medium" title={`${pendingChanges} pending changes. Saved locally. Will sync when online.`}>
+        <WifiOff className="w-4 h-4" />
+        <span>Offline {pendingChanges > 0 && `(${pendingChanges} pending)`}</span>
+      </div>
+    );
+  }
+
+  if (syncStatus === 'syncing') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20 text-xs font-medium">
+        <RefreshCw className="w-4 h-4 animate-spin" />
+        <span>Syncing...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20 text-xs font-medium">
+      {/* Assuming lucide-react doesn't have CloudCheck, fallback to a normal check or standard icon */}
+      <Wifi className="w-4 h-4" />
+      <span>Synced</span>
+    </div>
+  );
+}
+

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import localforage from 'localforage';
 import type { Group, Member, Collection, Transaction, Loan, LoanRepayment, Resolution, Notice, Activity, Role } from '../types';
 
 interface AppState {
@@ -14,6 +15,9 @@ interface AppState {
   activeGroupId: string | null;
   currentUserRole: Role;
   currentUserId: string | null;
+  isOnline: boolean;
+  syncStatus: 'synced' | 'syncing' | 'offline';
+  pendingChanges: number;
 }
 
 interface AppContextType extends AppState {
@@ -55,36 +59,98 @@ const defaultState: AppState = {
   activeGroupId: null,
   currentUserRole: 'SUPER_ADMIN',
   currentUserId: null,
+  isOnline: navigator.onLine,
+  syncStatus: navigator.onLine ? 'synced' : 'offline',
+  pendingChanges: 0,
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem('shg_app_data');
-    if (saved) {
-      try {
-        return { ...defaultState, ...JSON.parse(saved) };
-      } catch (e) {
-        console.error('Failed to parse saved data', e);
-      }
-    }
-    return defaultState;
-  });
+  const [state, setState] = useState<AppState>(defaultState);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('shg_app_data', JSON.stringify(state));
-    } catch (e: any) {
-      console.error('Failed to save to localStorage:', e);
-      if (e && e.name === 'QuotaExceededError') {
-        alert("Warning: Local storage quota exceeded! The application has run out of storage space. Your most recent changes could not be saved. Consider deleting some old records or lowering your data footprint.");
+    // Load from localforage instead of localStorage, fallback to localStorage if needed initially
+    async function loadState() {
+      try {
+        let savedState: any = await localforage.getItem('shg_app_data');
+        if (!savedState) {
+          // Check localStorage for migration
+          const legacySaved = localStorage.getItem('shg_app_data');
+          if (legacySaved) {
+            savedState = JSON.parse(legacySaved);
+            localStorage.removeItem('shg_app_data'); // cleanup after migration
+          }
+        }
+        if (savedState) {
+          // Always ensure current network status is true to real world, overwrite the saved states for them
+          setState({ ...defaultState, ...savedState, isOnline: navigator.onLine, syncStatus: navigator.onLine ? 'synced' : 'offline', pendingChanges: savedState.pendingChanges || 0 });
+        }
+      } catch (e) {
+        console.error('Failed to parse saved data', e);
+      } finally {
+        setIsLoaded(true);
       }
     }
-  }, [state]);
+    loadState();
+  }, []);
+
+  // Network listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setState(prev => ({ ...prev, isOnline: true, syncStatus: 'syncing' }));
+      
+      // Simulate sync to server
+      setTimeout(() => {
+        setState(prev => ({ 
+          ...prev, 
+          syncStatus: 'synced',
+          pendingChanges: 0 // Clear pending changes after "sync"
+        }));
+      }, 1500); 
+    };
+
+    const handleOffline = () => {
+      setState(prev => ({ ...prev, isOnline: false, syncStatus: 'offline' }));
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Initial sync check on mount if online and has pending
+    if (navigator.onLine && state.pendingChanges > 0 && isLoaded) {
+      handleOnline();
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localforage.setItem('shg_app_data', state).catch(e => {
+        console.error('Failed to save to localforage:', e);
+      });
+    }
+  }, [state, isLoaded]);
 
   const updateState = (updates: Partial<AppState>) => {
-    setState(prev => ({ ...prev, ...updates }));
+    setState(prev => {
+      const isMutation = Object.keys(updates).some(key => 
+        !['activeGroupId', 'currentUserRole', 'currentUserId', 'isOnline', 'syncStatus', 'pendingChanges'].includes(key)
+      );
+      
+      const newState = { ...prev, ...updates };
+      
+      if (isMutation && !prev.isOnline) {
+        newState.pendingChanges = prev.pendingChanges + 1;
+      }
+      
+      return newState;
+    });
   };
 
   const setCurrentUserRole = (role: Role) => updateState({ currentUserRole: role });
@@ -148,6 +214,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       groups: state.groups.map(g => g.id === groupId ? { ...g, logo } : g)
     });
   };
+
+  if (!isLoaded) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">Loading data...</div>;
+  }
 
   return (
     <AppContext.Provider value={{

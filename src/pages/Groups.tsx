@@ -14,6 +14,8 @@ export function Groups() {
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const [constitutionText, setConstitutionText] = useState('');
+  const [contactText, setContactText] = useState('');
+  const [emailText, setEmailText] = useState('');
   const [cropModalData, setCropModalData] = useState<{ src: string; isLogo: boolean } | null>(null);
 
   const canEdit = currentUserRole === 'SUPER_ADMIN';
@@ -21,6 +23,8 @@ export function Groups() {
   useEffect(() => {
     if (activeGroup) {
       setConstitutionText(activeGroup.constitution || '');
+      setContactText(activeGroup.contact || '');
+      setEmailText(activeGroup.email || '');
     }
   }, [activeGroup]);
 
@@ -41,6 +45,13 @@ export function Groups() {
     if (activeGroupId) {
       updateConstitution(activeGroupId, constitutionText);
       alert('Constitution saved successfully!');
+    }
+  };
+
+  const handleUpdateContactInfo = () => {
+    if (activeGroupId) {
+      updateGroup(activeGroupId, { contact: contactText, email: emailText });
+      alert('Contact info saved successfully!');
     }
   };
 
@@ -245,6 +256,40 @@ export function Groups() {
                       hover:file:bg-gray-50 file:transition-colors"
                   />
                   <p className="text-xs text-app-muted">Recommended: Square image, max 2MB.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bento-card flex-col flex">
+              <div className="flex justify-between items-center mb-4">
+                <div className="card-header !mb-0">GROUP CONTACT INFO</div>
+                <button
+                  onClick={handleUpdateContactInfo}
+                  className="bento-btn py-1 px-3 text-xs"
+                >
+                  Save
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={contactText}
+                    onChange={(e) => setContactText(e.target.value)}
+                    className="bento-input w-full py-1.5"
+                    placeholder="e.g. +91 98765 43210"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={emailText}
+                    onChange={(e) => setEmailText(e.target.value)}
+                    className="bento-input w-full py-1.5"
+                    placeholder="e.g. contact@shg.com"
+                  />
                 </div>
               </div>
             </div>

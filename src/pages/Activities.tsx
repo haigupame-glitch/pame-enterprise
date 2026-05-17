@@ -25,7 +25,7 @@ export function Activities() {
     const files = e.target.files;
     if (!files) return;
     
-    Array.from(files).forEach(file => {
+    Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;

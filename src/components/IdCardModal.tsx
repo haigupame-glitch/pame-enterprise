@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 import { X, Download, Upload, Camera, Building } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Member, Group } from '../types';
@@ -21,12 +21,9 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
     if (!cardRef.current) return;
     setDownloading(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: null
+      const dataUrl = await htmlToImage.toPng(cardRef.current, {
+        pixelRatio: 3,
       });
-      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `ID_${member.name.replace(/\s+/g, '_')}.png`;
       link.href = dataUrl;
@@ -60,6 +57,15 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
     reader.readAsDataURL(file);
   };
 
+  const groupNameLength = group.name?.length || 0;
+  const groupNameSizeClass = groupNameLength > 40 ? "text-xs" : groupNameLength > 25 ? "text-sm" : groupNameLength > 15 ? "text-base" : "text-lg";
+
+  const memberNameLength = member.name?.length || 0;
+  const memberNameSizeClass = memberNameLength > 30 ? "text-base" : memberNameLength > 20 ? "text-lg" : "text-[22px]";
+
+  const addressLength = member.address?.length || 0;
+  const addressSizeClass = addressLength > 60 ? "text-[9px] line-clamp-3" : "text-[11px] line-clamp-2";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md flex flex-col max-h-[95vh] overflow-hidden relative shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -74,98 +80,131 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
           {/* ID Card Wrapper */}
           <div 
             ref={cardRef} 
-            className="shrink-0 w-[300px] h-[480px] bg-white rounded-xl shadow-lg relative overflow-hidden flex flex-col items-center"
+            className="shrink-0 w-[450px] h-[280px] bg-white rounded-xl shadow-lg relative overflow-hidden flex"
             style={{ fontFamily: "'Inter', sans-serif" }}
           >
-            {/* Card Header Background */}
-            <div className="absolute top-0 left-0 w-full h-[140px] bg-gradient-to-br from-emerald-600 to-teal-800" />
-            <div className="absolute top-[138px] left-0 w-full overflow-hidden leading-[0]">
-              <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-8 flex-shrink-0 fill-emerald-600/50" style={{ transform: 'rotate(180deg)', transformOrigin: 'top' }}>
-                <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"></path>
-              </svg>
+            {/* Left Column (Photo & Banner) */}
+            <div className="w-[160px] h-full bg-gradient-to-br from-emerald-600 to-teal-800 flex flex-col items-center pt-6 pb-4 relative">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="1"/>
+                    </pattern>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#grid)" />
+                </svg>
+              </div>
+
+              {/* Group Logo */}
+              <div className="z-10 relative block text-center flex flex-col items-center mb-5 mt-2">
+                <label className="cursor-pointer group relative block">
+                  {group.logo ? (
+                    <>
+                      <img src={group.logo} alt="Group Logo" className="w-[72px] h-[72px] rounded-xl object-cover border-2 border-white/80 shadow-md mb-2 bg-white" crossOrigin="anonymous" />
+                      <div className="absolute inset-0 top-0 w-[72px] h-[72px] rounded-xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Upload className="w-5 h-5 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-[72px] h-[72px] rounded-xl border-2 border-white/50 bg-black/10 flex items-center justify-center shadow-md mb-2 group-hover:border-white transition-colors">
+                      <Building className="w-8 h-8 text-white/70 group-hover:text-white transition-colors" />
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                </label>
+              </div>
+
+              {/* Photo Area */}
+              <div className="z-10 relative px-4 w-full flex justify-center">
+                <label className="block w-[110px] h-[110px] rounded-full border-[3px] border-white shadow-xl bg-slate-100 overflow-hidden flex items-center justify-center cursor-pointer group relative">
+                  {member.photoUrl ? (
+                    <>
+                      <img src={member.photoUrl} alt="Member Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                        <Upload className="w-6 h-6 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-slate-400 flex flex-col items-center group-hover:text-slate-600 transition-colors">
+                      <Camera className="w-8 h-8 mb-2 opacity-50 text-slate-400 group-hover:text-slate-500 transition-colors" />
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-slate-500 transition-colors text-center leading-tight">Add<br/>Photo</span>
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                </label>
+              </div>
             </div>
 
-            {/* Header Content */}
-            <div className="z-10 w-full px-4 pt-4 pb-2 mb-4 text-center flex flex-col items-center">
-              {group.logo && (
-                <img src={group.logo} alt="Group Logo" className="w-[40px] h-[40px] rounded-full object-cover border-2 border-white shadow-sm mb-2" crossOrigin="anonymous" />
-              )}
-              <h1 className={cn("font-bold text-white leading-tight uppercase tracking-wide drop-shadow-md", group.logo ? "text-lg" : "text-xl pt-2")}>
-                {group.name}
-              </h1>
-              <p className="text-[10px] text-emerald-100 uppercase tracking-widest mt-1 opacity-90">Official Member ID</p>
-            </div>
-
-            {/* Photo Area */}
-            <div className="z-10 relative">
-              <div className="w-[120px] h-[120px] rounded-full border-[4px] border-white shadow-md bg-slate-100 overflow-hidden flex items-center justify-center">
-                {member.photoUrl ? (
-                  <img src={member.photoUrl} alt="Member Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+            {/* Right Column (Details) */}
+            <div className="flex-1 h-full px-7 py-7 flex flex-col relative bg-white">
+              {/* Background Watermark (Optional) */}
+              <div className="absolute top-1/2 right-4 transform -translate-y-1/2 opacity-[0.03] pointer-events-none">
+                {group.logo ? (
+                  <img src={group.logo} className="w-[180px] h-[180px] object-cover grayscale" crossOrigin="anonymous" />
                 ) : (
-                  <div className="text-slate-400 flex flex-col items-center">
-                    <Camera className="w-8 h-8 mb-1 opacity-50" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">No Photo</span>
-                  </div>
+                  <Building className="w-[180px] h-[180px]" />
                 )}
               </div>
-            </div>
 
-            {/* Member Details */}
-            <div className="z-10 mt-5 w-full px-6 flex flex-col items-center text-center pb-10">
-              <h2 className="text-xl font-bold text-gray-900 mb-1 leading-snug">{member.name}</h2>
-              <div className="text-xs font-bold text-emerald-600 mb-4 tracking-wider uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-                Member Status: Active
+              {/* Header Text */}
+              <div className="relative z-10 mb-4 border-b border-emerald-100 pb-2">
+                <h1 className={cn("font-bold text-emerald-900 leading-tight tracking-wide drop-shadow-sm break-words line-clamp-2", groupNameSizeClass)}>
+                  {group.name}
+                </h1>
+                <p className="text-[9px] text-emerald-600/80 uppercase tracking-[0.2em] font-bold mt-1">Official Member ID</p>
               </div>
 
-              <div className="w-full space-y-2 mt-2">
-                <div className="grid grid-cols-[30%_70%] text-left text-xs">
-                  <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Mem ID:</span>
-                  <span className="font-mono text-gray-800 font-medium">{member.memberNumber || member.id.substring(0, 8)}</span>
+              {/* Member Name */}
+              <div className="relative z-10 mb-2">
+                <h2 className={cn("font-bold text-gray-900 leading-snug line-clamp-2", memberNameSizeClass)}>{member.name}</h2>
+                <div className="text-[10px] font-bold text-emerald-700/80 tracking-widest uppercase bg-emerald-50 px-2.5 py-0.5 inline-block rounded-md border border-emerald-100/50 mt-1">
+                  Active Member
+                </div>
+              </div>
+
+              {/* Member Details */}
+              <div className="relative z-10 w-full mt-auto space-y-1.5 mb-10">
+                <div className="grid grid-cols-[70px_1fr] text-left text-xs items-center">
+                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">ID NO</span>
+                  <span className="font-mono text-gray-800 font-semibold">{member.memberNumber || member.id.substring(0, 8)}</span>
                 </div>
                 {member.contact && (
-                  <div className="grid grid-cols-[30%_70%] text-left text-xs">
-                    <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Phone:</span>
-                    <span className="font-mono text-gray-800 font-medium">{member.contact}</span>
+                  <div className="grid grid-cols-[70px_1fr] text-left text-xs items-center">
+                    <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">PHONE</span>
+                    <span className="font-mono text-gray-800 font-semibold">{member.contact}</span>
                   </div>
                 )}
                 {member.address && (
-                  <div className="grid grid-cols-[30%_70%] text-left text-xs items-start pt-1 border-t border-slate-100 mt-1">
-                    <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px] pt-0.5">Address:</span>
-                    <span className="text-gray-800 text-[11px] leading-[1.3] break-words line-clamp-3">{member.address}</span>
+                  <div className="grid grid-cols-[70px_1fr] text-left text-xs items-start">
+                    <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px] pt-0.5">ADDRESS</span>
+                    <span className={cn("font-medium leading-snug break-words text-gray-800", addressSizeClass)}>{member.address}</span>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Card Footer */}
-            <div className="absolute bottom-0 left-0 w-full h-[36px] bg-slate-900 flex items-center justify-between px-4 text-slate-400 text-[9px] font-mono shadow-inner border-t-2 border-emerald-500">
-              <span className="flex items-center gap-1">
-                ISSUED
-                <span className="text-white font-bold">
-                  {member.idIssueDate ? format(new Date(member.idIssueDate), 'dd MMM yyyy') : format(new Date(), 'dd MMM yyyy')}
+              {/* Group Contact Info */}
+              {(group.contact || group.email) && (
+                <div className="absolute bottom-[44px] left-7 right-7 flex items-center justify-between text-[9px] text-gray-500 border-t border-slate-100 pt-1.5">
+                   <span className="font-bold uppercase tracking-wider text-gray-400">Group Contact:</span>
+                   <span className="font-mono font-medium text-emerald-700/80 line-clamp-1 text-right">{[group.contact, group.email].filter(Boolean).join(' • ')}</span>
+                </div>
+              )}
+
+              {/* Card Footer */}
+              <div className="absolute bottom-0 right-0 w-[calc(100%-160px)] h-[36px] bg-slate-50 flex items-center justify-between px-6 text-slate-400 text-[10px] font-mono border-t border-slate-200">
+                <span className="flex items-center tracking-wider text-[9px]">
+                  Issued: <span className="text-slate-700 font-medium ml-1">{member.idIssueDate ? format(new Date(member.idIssueDate), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy')}</span>
                 </span>
-              </span>
-              <span>SHG.APP</span>
+                <span className="font-bold text-emerald-600/30">SHG.APP</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex flex-col gap-3 shrink-0 overflow-y-auto">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <label className="flex-1 bento-btn bg-slate-800 text-white hover:bg-slate-700 flex items-center justify-center gap-2 cursor-pointer border border-slate-700">
-              <Upload className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs">Photo</span>
-              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-            </label>
-            
-            <label className="flex-1 bento-btn bg-slate-800 text-white hover:bg-slate-700 flex items-center justify-center gap-2 cursor-pointer border border-slate-700">
-              <Building className="w-4 h-4 text-blue-400" />
-              <span className="text-xs">Group Logo</span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-            </label>
-          </div>
-
           <div className="flex gap-3 items-center">
             <div className="flex-1">
               <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Issue Date</label>
@@ -176,10 +215,22 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
                 onChange={(e) => updateMember({ ...member, idIssueDate: new Date(e.target.value).toISOString() })}
               />
             </div>
+          </div>
+          <div className="flex gap-3 mt-1">
+            <button 
+              onClick={() => {
+                const img = new Image();
+                img.src = cardRef.current ? (cardRef.current.querySelector('img') ? cardRef.current.querySelector('img')!.src : '') : ''; 
+                setTimeout(() => window.print(), 500); 
+              }}
+              className="flex-1 py-2 bento-btn bg-slate-700 text-white hover:bg-slate-600 flex items-center justify-center gap-2 transition-all border border-slate-600"
+            >
+              Print
+            </button>
             <button 
               onClick={handleDownload}
               disabled={downloading}
-              className="flex-1 self-end py-2 bento-btn bento-btn-primary flex items-center justify-center gap-2 disabled:opacity-50 group hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all"
+              className="flex-1 py-2 bento-btn bento-btn-primary flex items-center justify-center gap-2 disabled:opacity-50 group hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all"
             >
               <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
               <span className="text-xs">{downloading ? 'Wait...' : 'Download'}</span>

@@ -12,6 +12,8 @@ export interface Group {
   createdDate: string;
   constitution: string;
   logo?: string;
+  contact?: string;
+  email?: string;
 }
 
 export interface Member {
@@ -24,6 +26,7 @@ export interface Member {
   aadharNumber?: string;
   joinDate: string;
   photoUrl?: string;
+  idIssueDate?: string;
 }
 
 export interface Collection {
@@ -36,7 +39,7 @@ export interface Collection {
 }
 
 export type TransactionType = 'Income' | 'Expense';
-export type PaymentMode = 'Cash' | 'Online';
+export type PaymentMode = 'Cash' | 'Online' | 'Bank Transfer' | 'UPI' | 'Cheque';
 
 export interface Transaction {
   id: string;

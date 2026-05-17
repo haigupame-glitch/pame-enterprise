@@ -206,8 +206,9 @@ export function Members() {
                                 <Edit2 className="w-4 h-4" />
                               </button>
                             )}
-                            <button onClick={() => setSelectedMemberForId(member)} className="text-emerald-400 hover:text-emerald-300 p-1 transition-colors" title="ID Card">
+                            <button onClick={() => setSelectedMemberForId(member)} className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 px-2 py-1 rounded transition-colors" title="Generate ID Card">
                               <IdCard className="w-4 h-4" />
+                              <span className="text-xs font-medium">ID Card</span>
                             </button>
                             {canDeleteMember && (
                               deletingMemberId === member.id ? (

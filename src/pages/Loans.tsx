@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { generateId, formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
-import { Edit2, Check, X, Trash2 } from 'lucide-react';
+import { Edit2, Check, X, Trash2, MessageCircle } from 'lucide-react';
 
 export function Loans() {
   const { groups, loans, loanRepayments, members, activeGroupId, addLoan, updateLoan, deleteLoan, addRepayment, deleteRepayment, currentUserRole } = useAppContext();
@@ -452,13 +452,14 @@ export function Loans() {
                               <div className="flex justify-end gap-2 items-center">
                                 {remaining > 0 && member?.contact && (
                                   <a 
-                                    href={`https://wa.me/${member.contact}?text=${reminderText}`} 
+                                    href={`https://wa.me/${member.contact.replace(/\D/g, '')}?text=${reminderText}`} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="bento-btn py-1 px-2 text-xs !bg-app-accent/10 !text-app-accent !border-app-accent/20"
+                                    className="bento-btn py-1 px-2 text-xs !bg-emerald-500/10 !text-emerald-400 !border-emerald-500/20 hover:!bg-emerald-500/20 flex items-center justify-center gap-1 transition-colors"
                                     title="Send WhatsApp Reminder"
                                   >
-                                    Remind
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    Send Reminder
                                   </a>
                                 )}
                                 <button onClick={() => setActiveLoanId(loan.id)} className="bento-btn py-1 px-2 text-xs">

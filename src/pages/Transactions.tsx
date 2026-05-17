@@ -4,7 +4,7 @@ import { useAppContext } from '../store/AppContext';
 import { generateId, formatCurrency } from '../lib/utils';
 import { format, parseISO } from 'date-fns';
 import { TransactionType, PaymentMode } from '../types';
-import { Edit2, Trash2, Check, X } from 'lucide-react';
+import { Edit2, Trash2, Check, X, Search, FilterX } from 'lucide-react';
 
 export function Transactions() {
   const { transactions, activeGroupId, addTransaction, updateTransaction, deleteTransaction, currentUserRole } = useAppContext();
@@ -15,11 +15,35 @@ export function Transactions() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('Cash');
   const [amount, setAmount] = useState('');
 
+  const [filterQuery, setFilterQuery] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterType, setFilterType] = useState<TransactionType | 'All'>('All');
+  const [filterPaymentMode, setFilterPaymentMode] = useState<PaymentMode | 'All'>('All');
+
   const groupTransactions = useMemo(() => {
-    return transactions
+    let filtered = transactions
       .filter(t => t.groupId === activeGroupId)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [transactions, activeGroupId]);
+
+    if (filterQuery) {
+      filtered = filtered.filter(t => t.particulars.toLowerCase().includes(filterQuery.toLowerCase()));
+    }
+    if (filterStartDate) {
+      filtered = filtered.filter(t => t.date >= filterStartDate);
+    }
+    if (filterEndDate) {
+      filtered = filtered.filter(t => t.date <= filterEndDate);
+    }
+    if (filterType !== 'All') {
+      filtered = filtered.filter(t => t.type === filterType);
+    }
+    if (filterPaymentMode !== 'All') {
+      filtered = filtered.filter(t => t.paymentMode === filterPaymentMode);
+    }
+
+    return filtered;
+  }, [transactions, activeGroupId, filterQuery, filterStartDate, filterEndDate, filterType, filterPaymentMode]);
 
   const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
 
@@ -176,6 +200,9 @@ export function Transactions() {
               <select value={paymentMode} onChange={e => setPaymentMode(e.target.value as PaymentMode)} className="bento-select">
                 <option value="Cash">Cash</option>
                 <option value="Online">Online</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="UPI">UPI</option>
+                <option value="Cheque">Cheque</option>
               </select>
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -188,6 +215,65 @@ export function Transactions() {
           </form>
         </div>
       )}
+
+      <div className="bento-card mb-6">
+        <div className="card-header w-full !mb-4">SEARCH & FILTER</div>
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-[2] min-w-[200px] relative">
+            <Search className="w-4 h-4 absolute top-2.5 left-2.5 text-app-muted" />
+            <input 
+              type="text" 
+              placeholder="Search particulars..." 
+              value={filterQuery} 
+              onChange={e => setFilterQuery(e.target.value)} 
+              className="bento-input w-full pl-8 py-1.5 text-sm" 
+            />
+          </div>
+          <div className="flex-1 min-w-[120px]">
+             <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">From Date</label>
+             <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
+          </div>
+          <div className="flex-1 min-w-[120px]">
+             <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">To Date</label>
+             <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
+          </div>
+          <div className="flex-1 min-w-[120px]">
+             <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">Type</label>
+             <select value={filterType} onChange={e => setFilterType(e.target.value as TransactionType | 'All')} className="bento-select py-1.5 text-sm w-full cursor-pointer">
+               <option value="All">All Types</option>
+               <option value="Income">Income</option>
+               <option value="Expense">Expense</option>
+             </select>
+          </div>
+          <div className="flex-1 min-w-[120px]">
+             <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">Mode</label>
+             <select value={filterPaymentMode} onChange={e => setFilterPaymentMode(e.target.value as PaymentMode | 'All')} className="bento-select py-1.5 text-sm w-full cursor-pointer">
+               <option value="All">All Modes</option>
+               <option value="Cash">Cash</option>
+               <option value="Online">Online</option>
+               <option value="Bank Transfer">Bank</option>
+               <option value="UPI">UPI</option>
+               <option value="Cheque">Cheque</option>
+             </select>
+          </div>
+          {(filterQuery || filterStartDate || filterEndDate || filterType !== 'All' || filterPaymentMode !== 'All') && (
+            <div>
+              <button 
+                onClick={() => {
+                  setFilterQuery('');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
+                  setFilterType('All');
+                  setFilterPaymentMode('All');
+                }}
+                className="bento-btn py-1.5 px-3 text-sm flex items-center gap-1 hover:text-red-400"
+              >
+                <FilterX className="w-4 h-4" /> Clear
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="bento-card !p-0 overflow-hidden">
         <div className="border-b-2 border-app-border bg-[#0b214f] py-4">
@@ -227,7 +313,10 @@ export function Transactions() {
                       <td className="p-1 border-l border-app-border">
                         <select value={editForm.paymentMode} onChange={e => setEditForm({...editForm, paymentMode: e.target.value as PaymentMode})} className="bento-input py-1 px-1 text-xs w-full">
                           <option value="Cash">Cash</option>
-                          <option value="Bank">Bank</option>
+                          <option value="Online">Online</option>
+                          <option value="Bank Transfer">Bank</option>
+                          <option value="UPI">UPI</option>
+                          <option value="Cheque">Cheque</option>
                         </select>
                       </td>
                       <td colSpan={2} className="p-1 border-l border-app-border text-right">
