@@ -2,8 +2,9 @@ import React from 'react';
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { generateId, formatCurrency } from '../lib/utils';
-import { format } from 'date-fns';
-import { Edit2, Check, X, Trash2, MessageCircle } from 'lucide-react';
+import { format, addMonths } from 'date-fns';
+import { Edit2, Check, X, Trash2, MessageCircle, Download, AlertTriangle } from 'lucide-react';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Loans() {
   const { groups, loans, loanRepayments, members, activeGroupId, addLoan, updateLoan, deleteLoan, addRepayment, deleteRepayment, currentUserRole } = useAppContext();
@@ -15,6 +16,8 @@ export function Loans() {
   const [loanTerm, setLoanTerm] = useState('12');
 
   const [activeLoanId, setActiveLoanId] = useState<string | null>(null);
+  const [deletingLoanId, setDeletingLoanId] = useState<string | null>(null);
+  const [deletingRepaymentId, setDeletingRepaymentId] = useState<string | null>(null);
   const [repayPrincipal, setRepayPrincipal] = useState('');
   const [repayInterest, setRepayInterest] = useState('');
   const [repayDate, setRepayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -23,20 +26,62 @@ export function Loans() {
   const groupLoans = loans.filter(l => l.groupId === activeGroupId);
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
 
+  const overdueLoans = groupLoans.filter(loan => {
+    const reps = loanRepayments.filter(r => r.loanId === loan.id);
+    const totalPrincipalRepaid = reps.reduce((sum, r) => sum + r.principalAmount, 0);
+    const remaining = loan.principal - totalPrincipalRepaid;
+    const loanDueDate = loan.dueDate ? new Date(loan.dueDate) : (loan.loanTerm ? addMonths(new Date(loan.issueDate), loan.loanTerm) : null);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return loanDueDate && remaining > 0 && loanDueDate < now;
+  });
+
   const getMemberName = (id: string) => members.find(m => m.id === id)?.name || 'Unknown';
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
-  const [deletingLoanId, setDeletingLoanId] = useState<string | null>(null);
+  const exportLoansToCSV = () => {
+    if (!groupLoans.length) return;
 
-  const handleLoanDelete = (id: string) => {
-    deleteLoan(id);
-    if (activeLoanId === id) setActiveLoanId(null);
-    setDeletingLoanId(null);
+    const headers = ['SL No.', 'Member Name', 'Member ID No.', 'Contact', 'Sanction Date', 'Due Date', 'Principal', 'Interest Rate /mo', 'Principal Repaid', 'Remaining Balance', 'Status'];
+    const csvData = [
+      headers.join(','),
+      ...groupLoans.map((loan, index) => {
+        const member = groupMembers.find(m => m.id === loan.memberId);
+        const reps = loanRepayments.filter(r => r.loanId === loan.id);
+        const totalPrincipalRepaid = reps.reduce((sum, r) => sum + r.principalAmount, 0);
+        const remaining = loan.principal - totalPrincipalRepaid;
+        const dueDate = loan.dueDate ? format(new Date(loan.dueDate), 'yyyy-MM-dd') : (loan.loanTerm ? format(addMonths(new Date(loan.issueDate), loan.loanTerm), 'yyyy-MM-dd') : '');
+        
+        return [
+          index + 1,
+          `"${(member?.name || 'Unknown').replace(/"/g, '""')}"`,
+          `"${member?.memberNumber || ''}"`,
+          `"${member?.contact || ''}"`,
+          `"${format(new Date(loan.issueDate), 'yyyy-MM-dd')}"`,
+          `"${dueDate}"`,
+          loan.principal,
+          loan.interestRate,
+          totalPrincipalRepaid,
+          remaining,
+          `"${remaining <= 0 ? 'REPAID' : 'ACTIVE'}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `loans-${activeGroup?.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'group'}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
-  const [editLoanForm, setEditLoanForm] = useState({ principal: '', interestRate: '', issueDate: '' });
+  const [editLoanForm, setEditLoanForm] = useState({ principal: '', interestRate: '', issueDate: '', loanTerm: '' });
 
   const startEditLoan = (loan: any) => {
     setEditingLoanId(loan.id);
@@ -44,15 +89,20 @@ export function Loans() {
       principal: loan.principal.toString(),
       interestRate: loan.interestRate.toString(),
       issueDate: loan.issueDate,
+      loanTerm: (loan.loanTerm || 12).toString(),
     });
   };
 
   const saveEditLoan = (loan: any) => {
+    const term = parseInt(editLoanForm.loanTerm) || 12;
+    const dateOfIssue = editLoanForm.issueDate || loan.issueDate;
     updateLoan({
       ...loan,
       principal: parseFloat(editLoanForm.principal) || 0,
       interestRate: parseFloat(editLoanForm.interestRate) || 0,
-      issueDate: editLoanForm.issueDate || loan.issueDate,
+      issueDate: dateOfIssue,
+      loanTerm: term,
+      dueDate: format(addMonths(new Date(dateOfIssue), term), 'yyyy-MM-dd')
     });
     setEditingLoanId(null);
   };
@@ -61,13 +111,17 @@ export function Loans() {
     e.preventDefault();
     if (!activeGroupId || !memberId || !principal || !interestRate) return;
     
+    const term = parseInt(loanTerm) || 12;
+    
     addLoan({
       id: generateId(),
       groupId: activeGroupId,
       memberId,
       principal: parseFloat(principal),
       interestRate: parseFloat(interestRate),
+      loanTerm: term,
       issueDate,
+      dueDate: format(addMonths(new Date(issueDate), term), 'yyyy-MM-dd'),
       status: 'Active'
     });
     setPrincipal('');
@@ -106,6 +160,55 @@ export function Loans() {
   
   const formEMI = getEMI(parseFloat(principal) || 0, parseFloat(interestRate) || 0, parseInt(loanTerm) || 0);
   const standaloneEMI = getEMI(calcP, calcR, calcMonths);
+
+  const autoCalculateRepayment = () => {
+    if (!activeLoanId) return;
+    const loan = groupLoans.find(l => l.id === activeLoanId);
+    if (!loan) return;
+
+    let runningBalance = loan.principal;
+    let lastDate = new Date(loan.issueDate);
+    const history = loanRepayments.filter(r => r.loanId === loan.id).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    history.forEach(rep => {
+      runningBalance -= rep.principalAmount;
+      lastDate = new Date(rep.date);
+    });
+
+    if (runningBalance <= 0) {
+      setRepayPrincipal('0');
+      setRepayInterest('0');
+      return;
+    }
+
+    let paymentDate = new Date();
+    if (repayDate) {
+      paymentDate = new Date(repayDate);
+    }
+    
+    const diffTime = paymentDate.getTime() - lastDate.getTime();
+    if (diffTime < 0) {
+      alert("Payment date cannot be before the last recorded date.");
+      return;
+    }
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    const interest = Math.round((runningBalance * (loan.interestRate / 100)) * (diffDays / 30));
+    const emi = getEMI(loan.principal, loan.interestRate, loan.loanTerm || 12);
+    
+    let principal = emi - interest;
+    if (principal < 0) principal = 0;
+    if (principal > runningBalance) principal = runningBalance;
+    
+    const isEmiLargerThanRemaining = (runningBalance + interest) <= emi * 1.05;
+    if (isEmiLargerThanRemaining) {
+       principal = runningBalance;
+    }
+
+    setRepayInterest(interest.toString());
+    setRepayPrincipal(Math.round(principal).toString());
+  };
+
 
   const renderLedgerView = () => {
     if (!activeLoanId) return null;
@@ -174,6 +277,14 @@ export function Loans() {
               <div>
                 <div className="text-xs font-bold text-app-muted uppercase">Sanction Date</div>
                 <div className="font-bold text-lg">{format(new Date(loan.issueDate), 'dd/MM/yyyy')}</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-app-muted uppercase">Due Date</div>
+                <div className="font-bold text-lg">
+                  {loan.dueDate ? format(new Date(loan.dueDate), 'dd/MM/yyyy') : (
+                    loan.loanTerm ? format(addMonths(new Date(loan.issueDate), loan.loanTerm), 'dd/MM/yyyy') : 'N/A'
+                  )}
+                </div>
               </div>
               <div>
                 <div className="text-xs font-bold text-app-muted uppercase">Principal</div>
@@ -245,7 +356,14 @@ export function Loans() {
           </div>
 
           <div className="bg-slate-800/50 p-6 rounded-xl border border-app-border">
-            <h4 className="font-bold text-lg mb-4">Record New Repayment</h4>
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-bold text-lg">Record New Repayment</h4>
+              {canEdit && (
+                <button type="button" onClick={autoCalculateRepayment} className="bento-btn bg-app-primary/10 text-app-primary hover:bg-app-primary hover:text-slate-900 py-1.5 text-xs font-bold transition-colors">
+                  Auto-fill EMI
+                </button>
+              )}
+            </div>
             {!canEdit ? (
               <p className="text-app-muted">Only Admins can record repayments.</p>
             ) : (
@@ -291,7 +409,7 @@ export function Loans() {
                       <td className="border border-app-border p-2 text-center">
                         {canEdit && (
                           <button 
-                            onClick={() => deleteRepayment(rep.id)} 
+                            onClick={() => setDeletingRepaymentId(rep.id)} 
                             className="text-red-400 hover:text-red-300 p-1 transition-colors" 
                             title="Delete Repayment"
                           >
@@ -367,9 +485,35 @@ export function Loans() {
             </div>
           )}
 
+        {overdueLoans.length > 0 && (
+            <div className="bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r-xl">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="font-bold text-red-500 mb-1">Action Required: Overdue Loans</h3>
+                  <div className="text-sm text-red-400">
+                    <p>There {overdueLoans.length === 1 ? 'is' : 'are'} {overdueLoans.length} overdue loan{overdueLoans.length === 1 ? '' : 's'} in this group portfolio. Please follow up with the respective members.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bento-card !p-0 overflow-hidden">
-            <div className="p-4 border-b-2 border-app-border">
+            <div className="p-4 border-b-2 border-app-border flex justify-between items-center">
               <div className="card-header !mb-0">LOAN PORTFOLIO</div>
+              {(currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER') && groupLoans.length > 0 && (
+                <button
+                  onClick={exportLoansToCSV}
+                  className="flex items-center gap-2 bento-btn bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 text-xs"
+                  title="Export Loans to CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Export
+                </button>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="bento-table">
@@ -378,6 +522,7 @@ export function Loans() {
                     <th>Member</th>
                     <th className="text-right">Principal</th>
                     <th className="text-right">Rate /mo</th>
+                    <th className="text-center">Due Date</th>
                     <th className="text-center">Status</th>
                     <th className="text-right">Action</th>
                   </tr>
@@ -388,6 +533,11 @@ export function Loans() {
                     const totalPrincipalRepaid = reps.reduce((sum, r) => sum + r.principalAmount, 0);
                     const remaining = loan.principal - totalPrincipalRepaid;
                     const member = groupMembers.find(m => m.id === loan.memberId);
+                    
+                    const loanDueDate = loan.dueDate ? new Date(loan.dueDate) : (loan.loanTerm ? addMonths(new Date(loan.issueDate), loan.loanTerm) : null);
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0);
+                    const isOverdue = loanDueDate && remaining > 0 && loanDueDate < now;
                     
                     const reminderText = encodeURIComponent(`Hello ${member?.name},\nThis is a gentle reminder for your upcoming loan repayment of ${formatCurrency(remaining)} to ${activeGroup?.name || 'our SHG'}. Thank you!`);
 
@@ -421,8 +571,17 @@ export function Loans() {
                               />
                             </td>
                             <td className="text-center">
-                              <span className={`status-pill ${remaining <= 0 ? 'bg-app-accent/20 text-app-accent' : 'bg-amber-500/20 text-amber-500'}`}>
-                                {remaining <= 0 ? 'REPAID' : 'ACTIVE'}
+                              <input 
+                                type="number" 
+                                value={editLoanForm.loanTerm} 
+                                onChange={e => setEditLoanForm({...editLoanForm, loanTerm: e.target.value})} 
+                                className="bento-input py-1 px-2 text-sm text-center w-full min-w-[60px]"
+                                placeholder="Months"
+                              />
+                            </td>
+                            <td className="text-center">
+                              <span className={`status-pill w-full justify-center ${remaining <= 0 ? 'bg-app-accent/20 text-app-accent' : isOverdue ? 'bg-red-500/20 text-red-500 font-bold border border-red-500/30' : 'bg-amber-500/20 text-amber-500'}`}>
+                                {remaining <= 0 ? 'REPAID' : isOverdue ? 'OVERDUE' : 'ACTIVE'}
                               </span>
                             </td>
                             <td className="text-right">
@@ -443,9 +602,12 @@ export function Loans() {
                               <div className="text-xs text-app-primary font-bold font-mono">Rem: {formatCurrency(remaining)}</div>
                             </td>
                             <td className="text-right font-mono text-sm">{loan.interestRate}%</td>
+                            <td className={`text-center font-mono text-xs ${isOverdue ? 'text-red-400 font-bold' : 'text-app-muted'}`}>
+                              {loanDueDate ? format(loanDueDate, 'dd/MM/yy') : 'N/A'}
+                            </td>
                             <td className="text-center">
-                              <span className={`status-pill ${remaining <= 0 ? 'bg-app-accent/20 text-app-accent' : 'bg-amber-500/20 text-amber-500'}`}>
-                                {remaining <= 0 ? 'REPAID' : 'ACTIVE'}
+                              <span className={`status-pill w-full justify-center ${remaining <= 0 ? 'bg-app-accent/20 text-app-accent' : isOverdue ? 'bg-red-500/20 text-red-500 font-bold border border-red-500/30' : 'bg-amber-500/20 text-amber-500'}`}>
+                                {remaining <= 0 ? 'REPAID' : isOverdue ? 'OVERDUE' : 'ACTIVE'}
                               </span>
                             </td>
                             <td className="text-right">
@@ -470,17 +632,9 @@ export function Loans() {
                                     <button onClick={() => startEditLoan(loan)} className="text-app-primary hover:text-blue-400 p-1 transition-colors" title="Edit">
                                       <Edit2 className="w-4 h-4" />
                                     </button>
-                                    {deletingLoanId === loan.id ? (
-                                      <div className="flex gap-1 items-center">
-                                        <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter">Sure?</span>
-                                        <button onClick={() => handleLoanDelete(loan.id)} className="text-red-400 hover:text-red-300 p-1" title="Yes"><Check className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => setDeletingLoanId(null)} className="text-app-muted hover:text-white p-1" title="No"><X className="w-3.5 h-3.5" /></button>
-                                      </div>
-                                    ) : (
-                                      <button onClick={() => setDeletingLoanId(loan.id)} className="text-red-400 hover:text-red-300 p-1 transition-colors" title="Delete">
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    )}
+                                    <button onClick={() => setDeletingLoanId(loan.id)} className="text-red-400 hover:text-red-300 p-1 transition-colors" title="Delete">
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   </>
                                 )}
                               </div>
@@ -492,7 +646,7 @@ export function Loans() {
                   })}
                   {groupLoans.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-app-muted font-bold">
+                      <td colSpan={6} className="py-8 text-center text-app-muted font-bold">
                         No loans issued yet.
                       </td>
                     </tr>
@@ -586,7 +740,32 @@ export function Loans() {
         )}
       </div>
 
-      {/* Legacy Modal code removed completely */}
+      <ConfirmDialog
+        isOpen={deletingRepaymentId !== null}
+        title="Delete Repayment"
+        message="Are you sure you want to delete this repayment? This action cannot be undone."
+        onConfirm={() => {
+          if (deletingRepaymentId) {
+            deleteRepayment(deletingRepaymentId);
+            setDeletingRepaymentId(null);
+          }
+        }}
+        onCancel={() => setDeletingRepaymentId(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={deletingLoanId !== null}
+        title="Delete Loan"
+        message="Are you sure you want to delete this loan? This action cannot be undone and will also delete any associated repayment history (virtually)."
+        onConfirm={() => {
+          if (deletingLoanId) {
+            deleteLoan(deletingLoanId);
+            if (activeLoanId === deletingLoanId) setActiveLoanId(null);
+            setDeletingLoanId(null);
+          }
+        }}
+        onCancel={() => setDeletingLoanId(null)}
+      />
     </div>
   );
 }

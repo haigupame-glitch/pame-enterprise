@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import type { Role } from '../types';
 import { auth } from '../lib/firebase';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const navigation = [
   { name: 'Dashboard', to: '/', icon: LayoutDashboard },
@@ -23,12 +24,52 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole } = useAppContext();
+  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole, members, currentUserId, deleteMember, pendingChanges } = useAppContext();
   const activeGroup = groups.find(g => g.id === activeGroupId);
+
+  useEffect(() => {
+    if (currentUserId && !activeGroupId) {
+      const myMember = members.find(m => m.id === currentUserId);
+      if (myMember && myMember.groupId) {
+        setActiveGroup(myMember.groupId);
+      } else if (groups.length > 0) {
+        // Fallback for isolated admins without membership links
+        // but prefer linking them to a group
+        const myCreatedGroup = groups.find(g => g.id === currentUserId || true); // fallback is risky
+      }
+    }
+  }, [currentUserId, activeGroupId, members, groups, setActiveGroup]);
 
   const handleSignOut = async () => {
     try {
       await auth.signOut();
+    } catch(err) {
+      console.error(err);
+    }
+    setCurrentUserId(null);
+    setCurrentUserRole('MEMBER');
+  };
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!currentUserId) return;
+
+    try {
+      // Allow the state update to trigger sync (Firestore debounce is 2000ms)
+      deleteMember(currentUserId);
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          await user.delete();
+        } catch(authErr) {
+          console.warn("Failed to delete from Firebase Auth, might require recent login.", authErr);
+          // If we fail here, at least we've removed the member from the app data tree.
+          await auth.signOut();
+        }
+      }
     } catch(err) {
       console.error(err);
     }
@@ -53,16 +94,9 @@ export function Layout() {
 
         <div className="flex flex-col gap-2">
           <div className="label-small text-gray-400">Active Group</div>
-          <select 
-            value={activeGroupId || ''} 
-            onChange={(e) => setActiveGroup(e.target.value || null)}
-            className="bento-select font-medium text-sm"
-          >
-            <option value="">-- Select Group --</option>
-            {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
+          <div className="font-medium text-sm px-3 py-2 bg-slate-800/50 rounded-lg text-slate-200 border border-slate-700">
+            {activeGroup ? activeGroup.name : 'Unknown Group'}
+          </div>
         </div>
 
         <nav className="flex-1 mt-2">
@@ -110,6 +144,13 @@ export function Layout() {
               <RoleDisplay />
             </div>
             <button 
+              onClick={() => setShowDeleteDialog(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-orange-400 hover:text-orange-300 hover:bg-orange-400/10 rounded-lg transition-colors border border-orange-400/20"
+              title="Delete Account"
+            >
+              Delete Account
+            </button>
+            <button 
               onClick={handleSignOut}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors border border-red-400/20"
             >
@@ -123,6 +164,14 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Delete Account"
+        message="Are you sure you want to delete your account permanently? This action cannot be undone."
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
     </div>
   );
 }

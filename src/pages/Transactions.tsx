@@ -5,6 +5,7 @@ import { generateId, formatCurrency } from '../lib/utils';
 import { format, parseISO } from 'date-fns';
 import { TransactionType, PaymentMode } from '../types';
 import { Edit2, Trash2, Check, X, Search, FilterX } from 'lucide-react';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Transactions() {
   const { transactions, activeGroupId, addTransaction, updateTransaction, deleteTransaction, currentUserRole } = useAppContext();
@@ -14,12 +15,41 @@ export function Transactions() {
   const [type, setType] = useState<TransactionType>('Income');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('Cash');
   const [amount, setAmount] = useState('');
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
 
   const [filterQuery, setFilterQuery] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'All'>('All');
   const [filterPaymentMode, setFilterPaymentMode] = useState<PaymentMode | 'All'>('All');
+  const [dateRangePreset, setDateRangePreset] = useState('All');
+
+  const handleDatePresetChange = (preset: string) => {
+    setDateRangePreset(preset);
+    const today = new Date();
+    
+    if (preset === 'All') {
+      setFilterStartDate('');
+      setFilterEndDate('');
+    } else if (preset === 'Today') {
+      const todayStr = format(today, 'yyyy-MM-dd');
+      setFilterStartDate(todayStr);
+      setFilterEndDate(todayStr);
+    } else if (preset === 'This Week') {
+      const firstDay = new Date(today.setDate(today.getDate() - today.getDay()));
+      setFilterStartDate(format(firstDay, 'yyyy-MM-dd'));
+      setFilterEndDate(format(new Date(), 'yyyy-MM-dd'));
+    } else if (preset === 'This Month') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      setFilterStartDate(format(firstDay, 'yyyy-MM-dd'));
+      setFilterEndDate(format(new Date(today.getFullYear(), today.getMonth() + 1, 0), 'yyyy-MM-dd'));
+    } else if (preset === 'Last Month') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+      setFilterStartDate(format(firstDay, 'yyyy-MM-dd'));
+      setFilterEndDate(format(lastDay, 'yyyy-MM-dd'));
+    }
+  };
 
   const groupTransactions = useMemo(() => {
     let filtered = transactions
@@ -45,7 +75,7 @@ export function Transactions() {
     return filtered;
   }, [transactions, activeGroupId, filterQuery, filterStartDate, filterEndDate, filterType, filterPaymentMode]);
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ date: '', particulars: '', type: 'Income' as TransactionType, paymentMode: 'Cash' as PaymentMode, amount: '' });
@@ -120,13 +150,6 @@ export function Transactions() {
     // Balances will be slightly off for subsequent transactions unless recalculated,
     // but without a bulk update context method, this is the safest quick fix.
     setEditingId(null);
-  };
-
-  const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
-
-  const handleDelete = (id: string) => {
-    deleteTransaction(id);
-    setDeletingTxId(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -230,13 +253,28 @@ export function Transactions() {
             />
           </div>
           <div className="flex-1 min-w-[120px]">
-             <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">From Date</label>
-             <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
+             <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">Date Range</label>
+             <select value={dateRangePreset} onChange={e => handleDatePresetChange(e.target.value)} className="bento-select py-1.5 text-sm w-full cursor-pointer">
+               <option value="All">All Time</option>
+               <option value="Today">Today</option>
+               <option value="This Week">This Week</option>
+               <option value="This Month">This Month</option>
+               <option value="Last Month">Last Month</option>
+               <option value="Custom">Custom Range</option>
+             </select>
           </div>
-          <div className="flex-1 min-w-[120px]">
-             <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">To Date</label>
-             <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
-          </div>
+          {dateRangePreset === 'Custom' && (
+            <>
+              <div className="flex-1 min-w-[120px]">
+                 <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">From Date</label>
+                 <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
+              </div>
+              <div className="flex-1 min-w-[120px]">
+                 <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">To Date</label>
+                 <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
+              </div>
+            </>
+          )}
           <div className="flex-1 min-w-[120px]">
              <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">Type</label>
              <select value={filterType} onChange={e => setFilterType(e.target.value as TransactionType | 'All')} className="bento-select py-1.5 text-sm w-full cursor-pointer">
@@ -256,7 +294,7 @@ export function Transactions() {
                <option value="Cheque">Cheque</option>
              </select>
           </div>
-          {(filterQuery || filterStartDate || filterEndDate || filterType !== 'All' || filterPaymentMode !== 'All') && (
+          {(filterQuery || filterStartDate || filterEndDate || filterType !== 'All' || filterPaymentMode !== 'All' || dateRangePreset !== 'All') && (
             <div>
               <button 
                 onClick={() => {
@@ -265,6 +303,7 @@ export function Transactions() {
                   setFilterEndDate('');
                   setFilterType('All');
                   setFilterPaymentMode('All');
+                  setDateRangePreset('All');
                 }}
                 className="bento-btn py-1.5 px-3 text-sm flex items-center gap-1 hover:text-red-400"
               >
@@ -357,15 +396,7 @@ export function Transactions() {
                         <td className="text-right border-l border-app-border p-1">
                           <div className="flex justify-end gap-1 items-center">
                             <button onClick={() => startEdit(tx)} className="text-app-primary hover:text-blue-400 p-1"><Edit2 className="w-4 h-4" /></button>
-                            {deletingTxId === tx.id ? (
-                              <div className="flex gap-1 items-center">
-                                <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter">Sure?</span>
-                                <button onClick={() => handleDelete(tx.id)} className="text-red-400 hover:text-red-300 p-1"><Check className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => setDeletingTxId(null)} className="text-app-muted hover:text-white p-1"><X className="w-3.5 h-3.5" /></button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setDeletingTxId(tx.id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
-                            )}
+                            <button onClick={() => setDeletingTxId(tx.id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
                       )}
@@ -384,6 +415,19 @@ export function Transactions() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={deletingTxId !== null}
+        title="Delete Transaction"
+        message={`Are you sure you want to delete this transaction? This action cannot be undone.`}
+        onConfirm={() => {
+          if (deletingTxId) {
+            deleteTransaction(deletingTxId);
+            setDeletingTxId(null);
+          }
+        }}
+        onCancel={() => setDeletingTxId(null)}
+      />
     </div>
   );
 }

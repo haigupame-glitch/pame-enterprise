@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAppContext } from '../store/AppContext';
 import { 
   signInWithEmailAndPassword, 
@@ -9,24 +9,36 @@ import {
   signInWithPopup,
   GoogleAuthProvider
 } from 'firebase/auth';
+import { Eye, EyeOff } from 'lucide-react';
 
 export function Login({ onLogin }: { onLogin: () => void }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { members, setCurrentUserId, setCurrentUserRole, addMember, addGroup } = useAppContext();
 
-  const getPseudoEmail = (phoneNum: string) => {
+  const getPseudoEmail = (phoneNum: string, version?: number) => {
     const numbersOnly = phoneNum.replace(/[^0-9]/g, '');
     if (numbersOnly.length > 0) {
-      return `${numbersOnly}@shg.app.local`;
+      return `${numbersOnly}${version ? '-v' + version : ''}@shg.app.local`;
     }
     const sanitized = phoneNum.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-    return `${sanitized || 'admin'}@shg.app.local`;
+    return `${sanitized || 'admin'}${version ? '-v' + version : ''}@shg.app.local`;
+  };
+
+  const validatePassword = (pass: string) => {
+    if (pass.length < 8) return 'Password must be at least 8 characters long.';
+    if (!/[A-Z]/.test(pass)) return 'Password must contain at least one uppercase letter.';
+    if (!/[a-z]/.test(pass)) return 'Password must contain at least one lowercase letter.';
+    if (!/[0-9]/.test(pass)) return 'Password must contain at least one number.';
+    if (!/[@$!%*?&#^]/.test(pass)) return 'Password must contain at least one special character.';
+    return null;
   };
 
   const handleGoogleLogin = async () => {
@@ -108,7 +120,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           const memberRole = member.role || 'MEMBER';
           
           const authIdentifier = member.contact || member.loginId || rawPhone;
-          const pseudoEmail = getPseudoEmail(authIdentifier);
+          const pseudoEmail = getPseudoEmail(authIdentifier, member.authVersion);
           try {
             await signInWithEmailAndPassword(auth, pseudoEmail, password);
           } catch (err: any) {
@@ -116,8 +128,12 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
               try {
                 await createUserWithEmailAndPassword(auth, pseudoEmail, password);
-              } catch (createErr) {
-                console.error('Failed to create background auth', createErr);
+              } catch (createErr: any) {
+                if (createErr.code === 'auth/email-already-in-use') {
+                  console.warn('Background auth sync skipped: Email already in use');
+                } else {
+                  console.error('Failed to create background auth', createErr);
+                }
               }
             } else if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
                // Ignore and proceed locally
@@ -187,24 +203,6 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         // Sign Up
         const rawPhone = phone.trim();
         const pseudoEmail = getPseudoEmail(rawPhone);
-        
-        let isFirstUser = members.length === 0;
-        if (isFirstUser) {
-          try {
-            const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
-            if (snapshot.exists() && snapshot.data()?.members?.length > 0) {
-              isFirstUser = false;
-            }
-          } catch(e) {
-            // Ignore, stay with local isFirstUser
-          }
-        }
-
-        if (!isFirstUser) {
-           setError('Sign up is closed. Please ask an Admin to create your account, then Login.');
-           setLoading(false);
-           return;
-        }
 
         if (!groupName || !adminName) {
            setError('Group Name and Admin Name are required for new accounts.');
@@ -212,8 +210,14 @@ export function Login({ onLogin }: { onLogin: () => void }) {
            return;
         }
 
-        // We only allow Sign Up to create a SUPER_ADMIN if the app is entirely empty.
-        // Members must be created by Admin.
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+          setError(passwordError);
+          setLoading(false);
+          return;
+        }
+
+        // We allow Sign Up to create a new group and SUPER_ADMIN.
         try {
           await createUserWithEmailAndPassword(auth, pseudoEmail, password);
         } catch (err: any) {
@@ -255,18 +259,140 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         onLogin();
       }
     } catch (err: any) {
-      console.error('Firebase Auth Error:', err);
       if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
+        console.warn('Login failed:', err.message);
         setError('Wrong credentials');
       } else if (err.code === 'auth/email-already-in-use') {
+        console.warn('Login failed:', err.message);
         setError('An account with this phone number already exists. Please log in.');
       } else {
+        console.error('Firebase Auth Error:', err);
         setError(err.message || 'Authentication failed');
       }
     } finally {
       setLoading(false);
     }
   };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    const rawPhone = phone.trim();
+    const checkName = adminName.trim().toLowerCase(); // using adminName for checking the name
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+      if (!snapshot.exists()) {
+        throw new Error('Database not initialized');
+      }
+      
+      const data = snapshot.data();
+      const dbMembers = data.members || [];
+      
+      const memberIndex = dbMembers.findIndex((m: any) => 
+        ((m.contact || '').trim() === rawPhone || (m.loginId || '').trim() === rawPhone) &&
+        (m.name || '').trim().toLowerCase() === checkName
+      );
+      
+      if (memberIndex === -1) {
+         throw new Error('Could not find an account matching that phone number and full name. Please check your spelling.');
+      }
+      
+      dbMembers[memberIndex].loginPassword = password;
+      dbMembers[memberIndex].authVersion = (dbMembers[memberIndex].authVersion || 0) + 1;
+      
+      await setDoc(doc(db, 'appStore', 'globalState'), { members: dbMembers }, { merge: true });
+      
+      alert("Password reset successfully! Please log in with your new password.");
+      setIsForgotPassword(false);
+      setIsLogin(true);
+      setPassword('');
+      setAdminName('');
+    } catch(err: any) {
+       setError(err.message || 'Failed to reset password');
+    } finally {
+       setLoading(false);
+    }
+  };
+
+  if (isForgotPassword) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="bento-card max-w-md w-full">
+          <div className="card-header text-center !mb-6 text-xl">
+            RESET PASSWORD
+          </div>
+          {error && <div className="bg-red-500/20 text-red-500 p-3 rounded-lg mb-4 text-sm font-medium">{error}</div>}
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <div>
+              <label className="label-small mb-1 block text-slate-300">Registered Phone Number</label>
+              <input
+                type="text"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="Your registered phone or Login ID"
+                className="bento-input w-full"
+                required
+              />
+            </div>
+            <div>
+              <label className="label-small mb-1 block text-slate-300">Full Name</label>
+              <input
+                type="text"
+                value={adminName}
+                onChange={e => setAdminName(e.target.value)}
+                placeholder="Your full name as registered"
+                className="bento-input w-full"
+                required
+              />
+            </div>
+            <div>
+              <label className="label-small mb-1 block text-slate-300">New Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="bento-input w-full pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            <button type="submit" disabled={loading} className="bento-btn bento-btn-primary w-full disabled:opacity-50 mt-4">
+              {loading ? 'Processing...' : 'Reset Password'}
+            </button>
+            <button 
+              type="button" 
+              onClick={() => {
+                setIsForgotPassword(false);
+                setError('');
+                setAdminName('');
+              }} 
+              className="mt-4 text-xs font-semibold text-slate-400 hover:text-white uppercase tracking-wider hover:underline w-full text-center block transition-colors"
+            >
+              Back to Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
@@ -316,15 +442,38 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             />
           </div>
           <div>
-            <label className="label-small mb-1 block text-slate-300">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Your password"
-              className="bento-input w-full"
-              required
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="label-small block text-slate-300">Password</label>
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(true);
+                    setError('');
+                  }}
+                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Your password"
+                className="bento-input w-full pr-10"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
           <button type="submit" disabled={loading} className="bento-btn bento-btn-primary w-full disabled:opacity-50">
             {loading ? (isLogin ? 'Logging in...' : 'Creating account...') : (isLogin ? 'Login' : 'Create SHG Group & Admin Account')}

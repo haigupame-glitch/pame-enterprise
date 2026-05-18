@@ -80,6 +80,7 @@ export function MemberLoginModal({ member, onClose }: Props) {
               disabled={member.role === 'SUPER_ADMIN'}
             >
               <option value="MEMBER">Member</option>
+              <option value="TREASURER">Treasurer</option>
               <option value="ADMIN">Admin</option>
               <option value="SUPER_ADMIN">Super Admin</option>
             </select>

@@ -272,6 +272,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   
   const enforceSuperAdmin = () => state.currentUserRole === 'SUPER_ADMIN';
   const enforceAdminOrAbove = () => state.currentUserRole === 'SUPER_ADMIN' || state.currentUserRole === 'ADMIN';
+  const enforceTreasurerOrAbove = () => state.currentUserRole === 'SUPER_ADMIN' || state.currentUserRole === 'ADMIN' || state.currentUserRole === 'TREASURER';
 
   const addGroup = (group: Group) => {
     if (state.groups.length > 0 && !enforceSuperAdmin()) return;
@@ -280,7 +281,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   
   const addMember = (member: Member) => {
     if (state.members.length > 0 && !enforceAdminOrAbove()) return;
-    if (state.members.length > 0 && !enforceSuperAdmin()) member.role = 'MEMBER';
+    if (state.members.length > 0 && !enforceAdminOrAbove()) member.role = 'MEMBER';
     updateState({ members: [...state.members, member] });
   };
   
@@ -288,8 +289,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const isSelf = state.currentUserId === member.id;
     if (!enforceAdminOrAbove() && !isSelf) return;
     
-    // Protect role/auth assignment (only SUPER_ADMIN can change these)
-    if (!enforceSuperAdmin()) {
+    // Protect role/auth assignment (only SUPER_ADMIN/ADMIN can change these)
+    if (!enforceAdminOrAbove()) {
       const oldMember = state.members.find(m => m.id === member.id);
       if (oldMember) {
         member.role = oldMember.role;
@@ -302,12 +303,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const deleteMember = (id: string) => {
-    if (!enforceAdminOrAbove()) return;
+    const isSelf = state.currentUserId === id;
+    if (!enforceAdminOrAbove() && !isSelf) return;
     updateState({ members: state.members.filter(m => m.id !== id) });
   };
 
   const saveCollection = (col: Collection) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     const existingIndex = state.collections.findIndex(
       c => c.groupId === col.groupId && c.memberId === col.memberId && c.year === col.year && c.month === col.month
     );
@@ -321,49 +323,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addTransaction = (t: Transaction) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ transactions: [...state.transactions, t] });
   };
   const updateTransaction = (t: Transaction) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ transactions: state.transactions.map(tr => tr.id === t.id ? t : tr) });
   };
   const deleteTransaction = (id: string) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ transactions: state.transactions.filter(t => t.id !== id) });
   };
   
   const addLoan = (loan: Loan) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ loans: [...state.loans, loan] });
   };
   const updateLoan = (loan: Loan) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ loans: state.loans.map(l => l.id === loan.id ? loan : l) });
   };
   const deleteLoan = (id: string) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ loans: state.loans.filter(l => l.id !== id) });
   };
   const addRepayment = (rep: LoanRepayment) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ loanRepayments: [...state.loanRepayments, rep] });
   };
   const deleteRepayment = (id: string) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ loanRepayments: state.loanRepayments.filter(r => r.id !== id) });
   };
   
   const addResolution = (res: Resolution) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ resolutions: [...state.resolutions, res] });
   };
   const addNotice = (notice: Notice) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ notices: [...state.notices, notice] });
   };
   const addActivity = (activity: Activity) => {
-    if (!enforceAdminOrAbove()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({ activities: [...state.activities, activity] });
   };
   
@@ -372,14 +374,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const updateConstitution = (groupId: string, constitution: string) => {
-    if (!enforceSuperAdmin()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, constitution } : g)
     });
   };
 
   const updateGroup = (groupId: string, data: Partial<Group>) => {
-    if (!enforceSuperAdmin()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, ...data } : g)
     });
@@ -394,7 +396,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateGroupLogo = (groupId: string, logo: string) => {
-    if (!enforceSuperAdmin()) return;
+    if (!enforceTreasurerOrAbove()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, logo } : g)
     });

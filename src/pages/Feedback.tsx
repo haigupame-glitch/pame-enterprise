@@ -11,7 +11,7 @@ export function Feedback() {
   const [text, setText] = useState('');
   
   const currentMember = members.find(m => m.id === currentUserId);
-  const isAdmin = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const isAdmin = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +30,8 @@ export function Feedback() {
     setText('');
     alert('Thank you for your feedback!');
   };
+
+  const groupFeedbacks = feedbacks.filter(f => f.groupId === activeGroupId || f.groupId === 'GLOBAL');
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -77,11 +79,11 @@ export function Feedback() {
         </form>
       </div>
 
-      {isAdmin && feedbacks.length > 0 && (
+      {isAdmin && groupFeedbacks.length > 0 && (
         <div className="space-y-4 pt-6 mt-6 border-t border-slate-200">
           <h2 className="text-lg font-semibold text-slate-800">Recent Feedback (Admin View)</h2>
           <div className="grid gap-4">
-            {feedbacks.slice().reverse().map(fb => {
+            {groupFeedbacks.slice().reverse().map(fb => {
               const author = members.find(m => m.id === fb.userId);
               return (
                 <div key={fb.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">

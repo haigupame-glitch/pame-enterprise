@@ -10,7 +10,7 @@ export function Collections() {
 
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
   
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
   const handleAmountChange = (memberId: string, month: number, value: string) => {
     if (!activeGroupId) return;

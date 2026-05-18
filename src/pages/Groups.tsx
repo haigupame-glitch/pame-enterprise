@@ -4,13 +4,14 @@ import { useAppContext } from '../store/AppContext';
 import { generateId } from '../lib/utils';
 import { format } from 'date-fns';
 import { ImageCropperModal } from '../components/ImageCropperModal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Groups() {
   const { groups, activeGroupId, addGroup, updateGroup, deleteGroup, updateConstitution, updateGroupLogo, currentUserRole } = useAppContext();
   const [name, setName] = useState('');
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const [constitutionText, setConstitutionText] = useState('');
@@ -93,33 +94,10 @@ export function Groups() {
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
-          {canEdit && (
-            <div className="bento-card">
-              <form onSubmit={handleSubmit} className="w-full">
-                <div className="card-header">CREATE NEW GROUP</div>
-                <div className="flex flex-col sm:flex-row gap-4 items-start">
-                  <textarea
-                    required
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className="bento-input flex-auto w-full min-h-[42px] resize-y"
-                    placeholder="e.g. Mahila Samiti SHG. You can enter details about the group here."
-                    rows={3}
-                  />
-                  <button
-                    type="submit"
-                    className="bento-btn bento-btn-primary flex-none w-full sm:w-auto"
-                  >
-                    Save Group
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
 
           <div className="bento-card !p-0 overflow-hidden">
             <div className="p-4 border-b-2 border-app-border">
-              <div className="card-header !mb-0">ALL GROUPS</div>
+              <div className="card-header !mb-0">MY GROUP</div>
             </div>
             <div className="overflow-x-auto">
               <table className="bento-table">
@@ -131,7 +109,7 @@ export function Groups() {
                   </tr>
                 </thead>
                 <tbody>
-                  {groups.map((group) => (
+                  {groups.filter(g => g.id === activeGroupId).map((group) => (
                     <tr key={group.id}>
                       <td className="font-bold">
                         {editingGroupId === group.id ? (
@@ -187,33 +165,12 @@ export function Groups() {
                               >
                                 Edit
                               </button>
-                              {deletingId === group.id ? (
-                                <div className="flex gap-2 items-center">
-                                  <span className="text-xs text-red-500 font-medium">Sure?</span>
-                                  <button
-                                    onClick={() => {
-                                      deleteGroup(group.id);
-                                      setDeletingId(null);
-                                    }}
-                                    className="text-xs font-bold text-red-500 hover:text-red-400 hover:underline"
-                                  >
-                                    Yes
-                                  </button>
-                                  <button
-                                    onClick={() => setDeletingId(null)}
-                                    className="text-xs font-bold text-app-muted hover:text-white hover:underline"
-                                  >
-                                    No
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setDeletingId(group.id)}
-                                  className="text-xs font-bold text-red-500 hover:text-red-400 hover:underline"
-                                >
-                                  Delete
-                                </button>
-                              )}
+                              <button
+                                onClick={() => setDeletingGroupId(group.id)}
+                                className="text-xs font-bold text-red-500 hover:text-red-400 hover:underline"
+                              >
+                                Delete
+                              </button>
                             </div>
                           )}
                         </td>
@@ -317,6 +274,19 @@ export function Groups() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deletingGroupId !== null}
+        title="Delete Group"
+        message={`Are you sure you want to delete the group "${groups.find(g => g.id === deletingGroupId)?.name}"? This action cannot be undone and will permanently remove all data associated with this group.`}
+        onConfirm={() => {
+          if (deletingGroupId) {
+            deleteGroup(deletingGroupId);
+            setDeletingGroupId(null);
+          }
+        }}
+        onCancel={() => setDeletingGroupId(null)}
+      />
     </div>
   );
 }

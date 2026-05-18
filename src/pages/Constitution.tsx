@@ -23,7 +23,7 @@ export function Constitution() {
     setIsEditing(false);
   };
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
   return (
     <div className="space-y-6">

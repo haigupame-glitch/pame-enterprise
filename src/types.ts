@@ -1,4 +1,4 @@
-export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'MEMBER';
+export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TREASURER' | 'MEMBER';
 
 declare global {
   interface Window {
@@ -30,6 +30,7 @@ export interface Member {
   loginId?: string;
   loginPassword?: string;
   role?: Role;
+  authVersion?: number;
 }
 
 export interface Collection {
@@ -64,7 +65,9 @@ export interface Loan {
   memberId: string;
   principal: number;
   interestRate: number; // monthly %
+  loanTerm?: number; // term in months
   issueDate: string;
+  dueDate?: string;
   status: 'Active' | 'Repaid';
 }
 

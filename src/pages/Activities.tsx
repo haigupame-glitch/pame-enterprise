@@ -19,7 +19,7 @@ export function Activities() {
     .filter(a => a.groupId === activeGroupId)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
