@@ -15,8 +15,18 @@ export function MemberLoginModal({ member, onClose }: Props) {
   const [role, setRole] = useState(member.role || 'MEMBER');
   const [showSaved, setShowSaved] = useState(false);
 
+  const validatePassword = (pass: string) => {
+    if (pass.length > 0 && pass.length < 6) return 'Password must be at least 6 characters long.';
+    return null;
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      alert(passwordError);
+      return;
+    }
     updateMember({
       ...member,
       loginId,

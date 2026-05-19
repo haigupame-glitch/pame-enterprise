@@ -17,6 +17,21 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
   const [downloading, setDownloading] = useState(false);
   const { updateMember, updateGroup } = useAppContext();
   
+  const memberNameLength = member.name?.length || 0;
+  const [nameFontSize, setNameFontSize] = useState<number>(() => {
+    if (memberNameLength > 30) return 14;
+    if (memberNameLength > 20) return 18;
+    return 22;
+  });
+
+  const addressLength = member.address?.length || 0;
+  const [addressFontSize, setAddressFontSize] = useState<number>(() => {
+    if (addressLength > 60) return 9;
+    return 11;
+  });
+
+  const [logoOpacity, setLogoOpacity] = useState<number>(100);
+
   const handleDownload = async () => {
     if (!cardRef.current) return;
     setDownloading(true);
@@ -64,12 +79,6 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
   const groupNameLength = group.name?.length || 0;
   const groupNameSizeClass = groupNameLength > 40 ? "text-xs" : groupNameLength > 25 ? "text-sm" : groupNameLength > 15 ? "text-base" : "text-lg";
 
-  const memberNameLength = member.name?.length || 0;
-  const memberNameSizeClass = memberNameLength > 30 ? "text-base" : memberNameLength > 20 ? "text-lg" : "text-[22px]";
-
-  const addressLength = member.address?.length || 0;
-  const addressSizeClass = addressLength > 60 ? "text-[9px] line-clamp-3" : "text-[11px] line-clamp-2";
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md flex flex-col max-h-[95vh] overflow-hidden relative shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -102,7 +111,7 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
               </div>
 
               {/* Group Logo */}
-              <div className="z-10 relative block text-center flex flex-col items-center mb-5 mt-2">
+              <div className="z-10 relative block text-center flex flex-col items-center mb-5 mt-2" style={{ opacity: logoOpacity / 100 }}>
                 <label className="cursor-pointer group relative block">
                   {group.logo ? (
                     <>
@@ -144,7 +153,7 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
             {/* Right Column (Details) */}
             <div className="flex-1 h-full pt-7 pl-7 pr-6 pb-[40px] flex flex-col relative bg-white">
               {/* Background Watermark (Optional) */}
-              <div className="absolute top-1/2 right-4 transform -translate-y-1/2 opacity-[0.03] pointer-events-none">
+              <div className="absolute top-1/2 right-4 transform -translate-y-1/2 pointer-events-none" style={{ opacity: (logoOpacity / 100) * 0.03 }}>
                 {group.logo ? (
                   <img src={group.logo} className="w-[180px] h-[180px] object-cover grayscale" crossOrigin="anonymous" />
                 ) : (
@@ -162,7 +171,7 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
 
               {/* Member Name */}
               <div className="relative z-10 mb-2 shrink-0">
-                <h2 className={cn("font-bold text-gray-900 leading-snug line-clamp-2", memberNameSizeClass)}>{member.name}</h2>
+                <h2 className="font-bold text-gray-900 leading-snug line-clamp-2" style={{ fontSize: `${nameFontSize}px` }}>{member.name}</h2>
                 <div className="text-[10px] font-bold text-emerald-700/80 tracking-widest uppercase bg-emerald-50 px-2.5 py-0.5 inline-block rounded-md border border-emerald-100/50 mt-1">
                   Active Member
                 </div>
@@ -185,7 +194,7 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
                   {member.address && (
                     <div className="grid grid-cols-[65px_1fr] text-left text-xs items-start gap-1">
                       <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px] pt-0.5">ADDRESS</span>
-                      <span className={cn("font-medium leading-[1.3] break-words text-gray-800", addressSizeClass)} style={{ letterSpacing: '0.01em' }}>{member.address}</span>
+                      <span className="font-medium leading-[1.3] break-words text-gray-800 line-clamp-3" style={{ letterSpacing: '0.01em', fontSize: `${addressFontSize}px` }}>{member.address}</span>
                     </div>
                   )}
                 </div>
@@ -214,12 +223,24 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
 
         {/* Action Buttons */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex flex-col gap-3 shrink-0 overflow-y-auto">
-          <div className="flex gap-3 items-center">
-            <div className="flex-1">
+          <div className="grid grid-cols-2 gap-3 mb-1">
+            <div>
+              <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Name Size ({nameFontSize}px)</label>
+              <input type="range" min="10" max="30" value={nameFontSize} onChange={(e) => setNameFontSize(Number(e.target.value))} className="w-full accent-emerald-500" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Address Size ({addressFontSize}px)</label>
+              <input type="range" min="7" max="16" value={addressFontSize} onChange={(e) => setAddressFontSize(Number(e.target.value))} className="w-full accent-emerald-500" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Logo Visibility ({logoOpacity}%)</label>
+              <input type="range" min="0" max="100" value={logoOpacity} onChange={(e) => setLogoOpacity(Number(e.target.value))} className="w-full accent-emerald-500" />
+            </div>
+            <div>
               <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Issue Date</label>
               <input 
                 type="date" 
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none" 
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none" 
                 value={member.idIssueDate ? member.idIssueDate.split('T')[0] : new Date().toISOString().split('T')[0]} 
                 onChange={(e) => updateMember({ ...member, idIssueDate: new Date(e.target.value).toISOString() })}
               />
