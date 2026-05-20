@@ -5,6 +5,7 @@ import { generateId } from '../lib/utils';
 import { format } from 'date-fns';
 import { ImageCropperModal } from '../components/ImageCropperModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import QRCode from 'react-qr-code';
 
 export function Groups() {
   const { groups, activeGroupId, setActiveGroup, addGroup, updateGroup, deleteGroup, updateConstitution, updateGroupLogo, currentUserRole } = useAppContext();
@@ -14,18 +15,29 @@ export function Groups() {
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || !activeGroup;
+  const canEditGroupDetails = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
+
   const [constitutionText, setConstitutionText] = useState('');
   const [contactText, setContactText] = useState('');
   const [emailText, setEmailText] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [upiId, setUpiId] = useState('');
   const [cropModalData, setCropModalData] = useState<{ src: string; isLogo: boolean } | null>(null);
-
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || !activeGroup;
 
   useEffect(() => {
     if (activeGroup) {
       setConstitutionText(activeGroup.constitution || '');
       setContactText(activeGroup.contact || '');
       setEmailText(activeGroup.email || '');
+      setBankName(activeGroup.bankName || '');
+      setAccountName(activeGroup.accountName || '');
+      setAccountNumber(activeGroup.accountNumber || '');
+      setIfscCode(activeGroup.ifscCode || '');
+      setUpiId(activeGroup.upiId || '');
     }
   }, [activeGroup]);
 
@@ -51,8 +63,16 @@ export function Groups() {
 
   const handleUpdateContactInfo = () => {
     if (activeGroupId) {
-      updateGroup(activeGroupId, { contact: contactText, email: emailText });
-      alert('Contact info saved successfully!');
+      updateGroup(activeGroupId, { 
+        contact: contactText, 
+        email: emailText,
+        bankName,
+        accountName,
+        accountNumber,
+        ifscCode,
+        upiId
+      });
+      alert('Group information saved successfully!');
     }
   };
 
@@ -241,23 +261,26 @@ export function Groups() {
 
             <div className="bento-card flex-col flex">
               <div className="flex justify-between items-center mb-4">
-                <div className="card-header !mb-0">GROUP CONTACT INFO</div>
-                <button
-                  onClick={handleUpdateContactInfo}
-                  className="bento-btn py-1 px-3 text-xs"
-                >
-                  Save
-                </button>
+                <div className="card-header !mb-0">GROUP CONTACT & BANK INFO</div>
+                {canEditGroupDetails && (
+                  <button
+                    onClick={handleUpdateContactInfo}
+                    className="bento-btn py-1 px-3 text-xs"
+                  >
+                    Save
+                  </button>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 pb-6 border-b border-app-border">
                 <div>
                   <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Phone Number</label>
                   <input
                     type="text"
                     value={contactText}
                     onChange={(e) => setContactText(e.target.value)}
-                    className="bento-input w-full py-1.5"
+                    className="bento-input w-full py-1.5 disabled:opacity-50"
                     placeholder="e.g. +91 98765 43210"
+                    disabled={!canEditGroupDetails}
                   />
                 </div>
                 <div>
@@ -266,31 +289,116 @@ export function Groups() {
                     type="email"
                     value={emailText}
                     onChange={(e) => setEmailText(e.target.value)}
-                    className="bento-input w-full py-1.5"
+                    className="bento-input w-full py-1.5 disabled:opacity-50"
                     placeholder="e.g. contact@shg.com"
+                    disabled={!canEditGroupDetails}
                   />
                 </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="md:col-span-2 space-y-4">
+                    <div>
+                      <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Bank Name</label>
+                      <input
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        className="bento-input w-full py-1.5 disabled:opacity-50"
+                        placeholder="e.g. State Bank of India"
+                        disabled={!canEditGroupDetails}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Account Name</label>
+                      <input
+                        type="text"
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                        className="bento-input w-full py-1.5 disabled:opacity-50"
+                        placeholder="e.g. SHG Name"
+                        disabled={!canEditGroupDetails}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Account Number</label>
+                        <input
+                          type="text"
+                          value={accountNumber}
+                          onChange={(e) => setAccountNumber(e.target.value)}
+                          className="bento-input w-full py-1.5 disabled:opacity-50"
+                          placeholder="e.g. 1234567890"
+                          disabled={!canEditGroupDetails}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">IFSC Code</label>
+                        <input
+                          type="text"
+                          value={ifscCode}
+                          onChange={(e) => setIfscCode(e.target.value)}
+                          className="bento-input w-full py-1.5 disabled:opacity-50"
+                          placeholder="e.g. SBIN0001234"
+                          disabled={!canEditGroupDetails}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">UPI ID</label>
+                      <input
+                        type="text"
+                        value={upiId}
+                        onChange={(e) => setUpiId(e.target.value)}
+                        className="bento-input w-full py-1.5 disabled:opacity-50"
+                        placeholder="e.g. shgname@okbank"
+                        disabled={!canEditGroupDetails}
+                      />
+                    </div>
+                 </div>
+                 <div className="flex flex-col items-center justify-center p-4 bg-app-card rounded-xl border-2 border-dashed border-app-border h-full min-h-[200px]">
+                    {upiId ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="bg-white p-2 rounded-lg">
+                          <QRCode 
+                            value={`upi://pay?pa=${upiId}&pn=${accountName || activeGroup.name}`} 
+                            size={160} 
+                            fgColor="#030712"
+                            bgColor="#ffffff"
+                          />
+                        </div>
+                        <div className="text-xs font-semibold text-app-text text-center">Scan to Pay</div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-app-muted text-xs">
+                        Enter UPI ID<br/>to generate QR Code
+                      </div>
+                    )}
+                 </div>
               </div>
             </div>
 
             <div className="bento-card flex-col h-[500px] !p-0 overflow-hidden flex">
               <div className="p-4 border-b-2 border-app-border bg-gray-50 flex justify-between items-center shrink-0">
                 <div className="card-header !mb-0">GROUP CONSTITUTION</div>
-                <button
-                  onClick={handleUpdateConstitution}
-                  className="bento-btn py-1 px-3 text-xs"
-                >
-                  Save
-                </button>
+                {canEditGroupDetails && (
+                  <button
+                    onClick={handleUpdateConstitution}
+                    className="bento-btn py-1 px-3 text-xs"
+                  >
+                    Save
+                  </button>
+                )}
               </div>
               <div className="p-4 bg-app-card shrink-0 border-b border-gray-200">
                 <p className="text-xs text-app-muted">Draft rules and regulations for <strong>{activeGroup.name}</strong></p>
               </div>
               <textarea
-                className="flex-1 w-full border-0 py-4 px-6 text-app-text focus:ring-0 resize-none font-mono text-sm leading-relaxed"
+                className="flex-1 w-full border-0 py-4 px-6 text-app-text focus:ring-0 resize-none font-mono text-sm leading-relaxed disabled:opacity-50 bg-transparent"
                 placeholder="1. Name of the group...&#10;2. Aims and objectives...&#10;3. Membership criteria..."
                 value={constitutionText}
                 onChange={(e) => setConstitutionText(e.target.value)}
+                disabled={!canEditGroupDetails}
               />
             </div>
           </div>

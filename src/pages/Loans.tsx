@@ -7,7 +7,7 @@ import { Edit2, Check, X, Trash2, MessageCircle, Download, AlertTriangle } from 
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Loans() {
-  const { groups, loans, loanRepayments, members, activeGroupId, addLoan, updateLoan, deleteLoan, addRepayment, deleteRepayment, currentUserRole } = useAppContext();
+  const { groups, loans, loanRepayments, members, activeGroupId, addLoan, updateLoan, deleteLoan, addRepayment, updateRepayment, deleteRepayment, currentUserRole } = useAppContext();
   
   const [memberId, setMemberId] = useState('');
   const [principal, setPrincipal] = useState('');
@@ -82,6 +82,9 @@ export function Loans() {
 
   const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
   const [editLoanForm, setEditLoanForm] = useState({ principal: '', interestRate: '', issueDate: '', loanTerm: '' });
+  
+  const [editingRepaymentId, setEditingRepaymentId] = useState<string | null>(null);
+  const [editRepaymentForm, setEditRepaymentForm] = useState({ date: '', principalAmount: '', interestAmount: '' });
 
   const startEditLoan = (loan: any) => {
     setEditingLoanId(loan.id);
@@ -160,6 +163,25 @@ export function Loans() {
   
   const formEMI = getEMI(parseFloat(principal) || 0, parseFloat(interestRate) || 0, parseInt(loanTerm) || 0);
   const standaloneEMI = getEMI(calcP, calcR, calcMonths);
+
+  const startEditRepayment = (rep: any) => {
+    setEditingRepaymentId(rep.id);
+    setEditRepaymentForm({
+      date: format(new Date(rep.date), 'yyyy-MM-dd'),
+      principalAmount: rep.principalAmount.toString(),
+      interestAmount: rep.interestAmount.toString(),
+    });
+  };
+
+  const saveEditRepayment = (rep: any) => {
+    updateRepayment({
+      ...rep,
+      date: editRepaymentForm.date || format(new Date(rep.date), 'yyyy-MM-dd'),
+      principalAmount: parseFloat(editRepaymentForm.principalAmount) || 0,
+      interestAmount: parseFloat(editRepaymentForm.interestAmount) || 0,
+    });
+    setEditingRepaymentId(null);
+  };
 
   const autoCalculateRepayment = () => {
     if (!activeLoanId) return;
@@ -402,21 +424,70 @@ export function Loans() {
                 <tbody>
                   {loanHistory.map(rep => (
                     <tr key={rep.id} className="hover:bg-slate-700/20">
-                      <td className="border border-app-border p-2 text-app-text">{format(new Date(rep.date), 'dd/MM/yyyy')}</td>
-                      <td className="border border-app-border p-2 text-right font-mono text-app-primary">{formatCurrency(rep.principalAmount)}</td>
-                      <td className="border border-app-border p-2 text-right font-mono text-amber-500">{formatCurrency(rep.interestAmount)}</td>
-                      <td className="border border-app-border p-2 text-right font-mono font-bold text-app-accent">{formatCurrency(rep.principalAmount + rep.interestAmount)}</td>
-                      <td className="border border-app-border p-2 text-center">
-                        {canEdit && (
-                          <button 
-                            onClick={() => setDeletingRepaymentId(rep.id)} 
-                            className="text-red-400 hover:text-red-300 p-1 transition-colors" 
-                            title="Delete Repayment"
-                          >
-                            <Trash2 className="w-4 h-4 mx-auto" />
-                          </button>
-                        )}
-                      </td>
+                      {editingRepaymentId === rep.id ? (
+                        <>
+                          <td className="border border-app-border p-2">
+                            <input 
+                                type="date" 
+                                value={editRepaymentForm.date} 
+                                onChange={e => setEditRepaymentForm({...editRepaymentForm, date: e.target.value})} 
+                                className="bento-input py-1 px-2 text-xs w-full"
+                              />
+                          </td>
+                          <td className="border border-app-border p-2 text-right">
+                             <input 
+                                type="number" 
+                                value={editRepaymentForm.principalAmount} 
+                                onChange={e => setEditRepaymentForm({...editRepaymentForm, principalAmount: e.target.value})} 
+                                className="bento-input py-1 px-2 text-sm text-right w-full min-w-[80px]"
+                              />
+                          </td>
+                          <td className="border border-app-border p-2 text-right">
+                             <input 
+                                type="number" 
+                                value={editRepaymentForm.interestAmount} 
+                                onChange={e => setEditRepaymentForm({...editRepaymentForm, interestAmount: e.target.value})} 
+                                className="bento-input py-1 px-2 text-sm text-right w-full min-w-[80px]"
+                              />
+                          </td>
+                          <td className="border border-app-border p-2 text-right font-mono font-bold text-app-accent">
+                            {formatCurrency((parseFloat(editRepaymentForm.principalAmount)||0) + (parseFloat(editRepaymentForm.interestAmount)||0))}
+                          </td>
+                          <td className="border border-app-border p-2 text-center">
+                             <div className="flex justify-center gap-2">
+                               <button onClick={() => saveEditRepayment(rep)} className="text-app-accent hover:text-emerald-400 p-1" title="Save"><Check className="w-4 h-4" /></button>
+                               <button onClick={() => setEditingRepaymentId(null)} className="text-app-muted hover:text-white p-1" title="Cancel"><X className="w-4 h-4" /></button>
+                             </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="border border-app-border p-2 text-app-text">{format(new Date(rep.date), 'dd/MM/yyyy')}</td>
+                          <td className="border border-app-border p-2 text-right font-mono text-app-primary">{formatCurrency(rep.principalAmount)}</td>
+                          <td className="border border-app-border p-2 text-right font-mono text-amber-500">{formatCurrency(rep.interestAmount)}</td>
+                          <td className="border border-app-border p-2 text-right font-mono font-bold text-app-accent">{formatCurrency(rep.principalAmount + rep.interestAmount)}</td>
+                          <td className="border border-app-border p-2 text-center">
+                            {canEdit && (
+                              <div className="flex justify-center gap-2">
+                                <button 
+                                  onClick={() => startEditRepayment(rep)} 
+                                  className="text-app-primary hover:text-blue-400 p-1 transition-colors" 
+                                  title="Edit Repayment"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => setDeletingRepaymentId(rep.id)} 
+                                  className="text-red-400 hover:text-red-300 p-1 transition-colors" 
+                                  title="Delete Repayment"
+                                >
+                                  <Trash2 className="w-4 h-4 mx-auto" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                   {loanHistory.length === 0 && (

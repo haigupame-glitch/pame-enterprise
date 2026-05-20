@@ -14,6 +14,11 @@ export interface Group {
   logo?: string;
   contact?: string;
   email?: string;
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  upiId?: string;
 }
 
 export interface Member {

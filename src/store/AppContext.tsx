@@ -40,6 +40,7 @@ interface AppContextType extends AppState {
   updateLoan: (loan: Loan) => void;
   deleteLoan: (id: string) => void;
   addRepayment: (repayment: LoanRepayment) => void;
+  updateRepayment: (repayment: LoanRepayment) => void;
   deleteRepayment: (id: string) => void;
   addResolution: (resolution: Resolution) => void;
   addNotice: (notice: Notice) => void;
@@ -365,6 +366,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!enforceTreasurerOrAbove()) return;
     updateState({ loanRepayments: [...state.loanRepayments, rep] });
   };
+  const updateRepayment = (rep: LoanRepayment) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ loanRepayments: state.loanRepayments.map(r => r.id === rep.id ? rep : r) });
+  };
   const deleteRepayment = (id: string) => {
     if (!enforceTreasurerOrAbove()) return;
     updateState({ loanRepayments: state.loanRepayments.filter(r => r.id !== id) });
@@ -438,6 +443,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateLoan,
       deleteLoan,
       addRepayment,
+      updateRepayment,
       deleteRepayment,
       addResolution,
       addNotice,
