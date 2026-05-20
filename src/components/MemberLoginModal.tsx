@@ -52,21 +52,21 @@ export function MemberLoginModal({ member, onClose }: Props) {
             <Key className="w-5 h-5 text-orange-400" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">App Credentials</h2>
+            <h2 className="text-lg font-bold">Manage Access</h2>
             <p className="text-[10px] text-app-muted uppercase tracking-wider">{member.name}</p>
           </div>
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="label-small mb-1 block">Login ID (ID No / Phone)</label>
+            <label className="label-small mb-1 block">Username (Login ID)</label>
             <input
               type="text"
               required
               value={loginId}
               onChange={e => setLoginId(e.target.value)}
               className="bento-input w-full"
-              placeholder="e.g. 9876543210"
+              placeholder="Enter username or phone"
             />
           </div>
           <div>

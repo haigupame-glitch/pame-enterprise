@@ -14,7 +14,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {!activeGroupId && (
+      {!activeGroup && (
         <div className="bento-card border-app-primary/30 bg-app-primary/10">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -68,7 +68,7 @@ export function Dashboard() {
           <div className="stat-huge z-10 relative">{groups.length}</div>
         </div>
         
-        {activeGroupId && (
+        {activeGroup && (
           <>
             <div className="bento-card relative overflow-hidden group border-app-accent/30">
               <div className="absolute right-0 top-0 w-24 h-24 bg-app-accent/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>

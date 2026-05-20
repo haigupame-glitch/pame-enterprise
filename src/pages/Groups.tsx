@@ -7,7 +7,7 @@ import { ImageCropperModal } from '../components/ImageCropperModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Groups() {
-  const { groups, activeGroupId, addGroup, updateGroup, deleteGroup, updateConstitution, updateGroupLogo, currentUserRole } = useAppContext();
+  const { groups, activeGroupId, setActiveGroup, addGroup, updateGroup, deleteGroup, updateConstitution, updateGroupLogo, currentUserRole } = useAppContext();
   const [name, setName] = useState('');
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -19,7 +19,7 @@ export function Groups() {
   const [emailText, setEmailText] = useState('');
   const [cropModalData, setCropModalData] = useState<{ src: string; isLogo: boolean } | null>(null);
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN';
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || !activeGroup;
 
   useEffect(() => {
     if (activeGroup) {
@@ -92,12 +92,26 @@ export function Groups() {
           onCancel={() => setCropModalData(null)}
         />
       )}
+      
+      {canEdit && (
+        <div className="bento-card">
+          <div className="card-header">CREATE NEW SHG GROUP</div>
+          <form onSubmit={handleSubmit} className="flex gap-4 items-end">
+            <div className="flex-1">
+              <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Group Name</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} required className="bento-input w-full py-2" placeholder="My SHG Group" />
+            </div>
+            <button type="submit" className="bento-btn py-2 px-6 h-fit shrink-0">Create Group</button>
+          </form>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
 
           <div className="bento-card !p-0 overflow-hidden">
             <div className="p-4 border-b-2 border-app-border">
-              <div className="card-header !mb-0">MY GROUP</div>
+              <div className="card-header !mb-0">{currentUserRole === 'SUPER_ADMIN' ? 'ALL GROUPS' : 'MY GROUP'}</div>
             </div>
             <div className="overflow-x-auto">
               <table className="bento-table">
@@ -109,7 +123,7 @@ export function Groups() {
                   </tr>
                 </thead>
                 <tbody>
-                  {groups.filter(g => g.id === activeGroupId).map((group) => (
+                  {groups.filter(g => currentUserRole === 'SUPER_ADMIN' || g.id === activeGroupId).map((group) => (
                     <tr key={group.id}>
                       <td className="font-bold">
                         {editingGroupId === group.id ? (
@@ -156,6 +170,14 @@ export function Groups() {
                             </div>
                           ) : (
                             <div className="flex gap-3">
+                              {group.id !== activeGroupId && (
+                                <button
+                                  onClick={() => setActiveGroup(group.id)}
+                                  className="text-xs font-bold text-app-accent hover:underline"
+                                >
+                                  Switch
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setEditingGroupId(group.id);

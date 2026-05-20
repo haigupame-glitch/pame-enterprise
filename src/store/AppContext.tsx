@@ -275,8 +275,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const enforceTreasurerOrAbove = () => state.currentUserRole === 'SUPER_ADMIN' || state.currentUserRole === 'ADMIN' || state.currentUserRole === 'TREASURER';
 
   const addGroup = (group: Group) => {
-    if (state.groups.length > 0 && !enforceSuperAdmin()) return;
+    // If they already have a group and aren't SUPER_ADMIN, block. But if they're grouped we allow Super admin.
+    // If they have NO group (e.g. new user), allow them to create a group!
+    const currentUser = state.currentUserId ? state.members.find(m => m.id === state.currentUserId) : null;
+    const isNewUserWithoutGroup = currentUser && (!currentUser.groupId || currentUser.groupId === 'PENDING' || currentUser.groupId === '');
+    
+    if (state.groups.length > 0 && !enforceSuperAdmin() && !isNewUserWithoutGroup) return;
+    
     updateState({ groups: [...state.groups, group], activeGroupId: group.id });
+    
+    // If the current user doesn't have a group, update them to this newly created group and make them SUPER_ADMIN
+    if (isNewUserWithoutGroup) {
+       const updatedMembers = state.members.map(m => 
+          m.id === state.currentUserId ? { ...m, groupId: group.id, role: 'SUPER_ADMIN' as Role } : m
+       );
+       updateState({ members: updatedMembers, currentUserRole: 'SUPER_ADMIN' });
+    }
   };
   
   const addMember = (member: Member) => {

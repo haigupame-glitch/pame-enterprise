@@ -258,8 +258,9 @@ export function Members() {
                         <td className="text-right">
                           <div className="flex justify-end gap-2 items-center">
                             {(currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') && (
-                              <button onClick={() => setSelectedMemberForLogin(member)} className="text-orange-400 hover:text-orange-300 p-1 transition-colors" title="Manage Login">
+                              <button onClick={() => setSelectedMemberForLogin(member)} className="flex items-center gap-1.5 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 px-2 py-1 rounded transition-colors" title="Manage Access">
                                 <Key className="w-4 h-4" />
+                                <span className="text-xs font-medium">Manage Access</span>
                               </button>
                             )}
                             {canEditMember(member.id) && (

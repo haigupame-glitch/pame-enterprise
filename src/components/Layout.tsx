@@ -102,7 +102,7 @@ export function Layout() {
         <nav className="flex-1 mt-2">
           <ul className="space-y-1.5 print:hidden">
             {navigation.map((item) => {
-              if (item.defaultGroupNeeds && !activeGroupId) return null;
+              if (item.defaultGroupNeeds && !activeGroup) return null;
               
               return (
                 <li key={item.name}>

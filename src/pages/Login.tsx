@@ -15,7 +15,6 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [groupName, setGroupName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -221,8 +220,8 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         const rawPhone = phone.trim();
         const pseudoEmail = getPseudoEmail(rawPhone);
 
-        if (!groupName || !adminName) {
-           setError('Group Name and Admin Name are required for new accounts.');
+        if (!adminName) {
+           setError('Admin Name is required for new accounts.');
            setLoading(false);
            return;
         }
@@ -246,24 +245,15 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         }
 
         const adminId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
-        const groupId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
         
         // Setup initial role so addGroup/addMember doesn't block
         setCurrentUserRole('SUPER_ADMIN');
         setCurrentUserId(adminId);
 
-        // Create the group
-        addGroup({
-          id: groupId,
-          name: groupName,
-          createdDate: new Date().toISOString(),
-          constitution: 'Standard SHG Constitution'
-        });
-
         // Create the admin member
         addMember({
           id: adminId,
-          groupId: groupId,
+          groupId: 'PENDING',
           name: adminName,
           contact: rawPhone,
           loginId: rawPhone,
@@ -424,17 +414,6 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           {!isLogin && (
             <>
               <div>
-                <label className="label-small mb-1 block text-slate-300">Group Name</label>
-                <input
-                  type="text"
-                  value={groupName}
-                  onChange={e => setGroupName(e.target.value)}
-                  placeholder="Enter SHG Group Name"
-                  className="bento-input w-full"
-                  required
-                />
-              </div>
-              <div>
                 <label className="label-small mb-1 block text-slate-300">Your Full Name (Admin)</label>
                 <input
                   type="text"
@@ -448,12 +427,12 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             </>
           )}
           <div>
-            <label className="label-small mb-1 block text-slate-300">Login ID (Member ID / Mobile Number)</label>
+            <label className="label-small mb-1 block text-slate-300">Login ID / Username</label>
             <input
               type="text"
               value={phone}
               onChange={e => setPhone(e.target.value)}
-              placeholder="e.g. SHG-001 or 9999999999"
+              placeholder="e.g. SHG-001, john123, or 9999999999"
               className="bento-input w-full"
               required
             />
