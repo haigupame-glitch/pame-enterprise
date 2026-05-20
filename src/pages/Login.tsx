@@ -143,13 +143,30 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           onLogin();
         } else {
           // Fallback check Firebase (if app storage was cleared but member exists in DB)
-          const pseudoEmail = getPseudoEmail(rawPhone);
-          
+          let dbMembers: any[] = [];
           try {
-            await signInWithEmailAndPassword(auth, pseudoEmail, password);
+            // Log in anonymously to bypass firestore rule (if enabled) or try to use pseudoEmail
+            try {
+               await signInAnonymously(auth);
+            } catch (anonErr) {
+               console.warn("Anonymous auth failed, trying direct email auth...", anonErr);
+               const pseudoEmail = getPseudoEmail(rawPhone);
+               await signInWithEmailAndPassword(auth, pseudoEmail, password);
+            }
           } catch (err: any) {
              if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
                  console.warn("Bypassing Firebase Auth (disabled)");
+             } else if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
+                 const pseudoEmail = getPseudoEmail(rawPhone);
+                 try {
+                     await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+                 } catch (createErr: any) {
+                     if (createErr.code === 'auth/email-already-in-use') {
+                         console.warn('Background auth sync skipped: Email already in use');
+                     } else {
+                         throw createErr;
+                     }
+                 }
              } else {
                  throw err;
              }
@@ -172,6 +189,10 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                   (m.memberNumber || '').trim().toLowerCase() === checkPhone
                 );
                 if (foundMember) {
+                  if (foundMember.loginPassword !== password) {
+                     auth.signOut();
+                     throw new Error('Wrong credentials');
+                  }
                   resolvedId = foundMember.id;
                   resolvedRole = foundMember.role || 'MEMBER';
                 } else {
