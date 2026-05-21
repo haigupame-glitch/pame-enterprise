@@ -8,10 +8,11 @@ import { Edit2, Trash2, Check, X, Search, FilterX } from 'lucide-react';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Transactions() {
-  const { transactions, activeGroupId, addTransaction, updateTransaction, deleteTransaction, currentUserRole } = useAppContext();
+  const { transactions, members, activeGroupId, addTransaction, updateTransaction, deleteTransaction, currentUserRole } = useAppContext();
   
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [particulars, setParticulars] = useState('');
+  const [memberId, setMemberId] = useState('');
   const [type, setType] = useState<TransactionType>('Income');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('Cash');
   const [amount, setAmount] = useState('');
@@ -78,13 +79,14 @@ export function Transactions() {
   const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ date: '', particulars: '', type: 'Income' as TransactionType, paymentMode: 'Cash' as PaymentMode, amount: '' });
+  const [editForm, setEditForm] = useState({ date: '', particulars: '', memberId: '', type: 'Income' as TransactionType, paymentMode: 'Cash' as PaymentMode, amount: '' });
 
   const startEdit = (tx: any) => {
     setEditingId(tx.id);
     setEditForm({
       date: tx.date,
       particulars: tx.particulars,
+      memberId: tx.memberId || '',
       type: tx.type,
       paymentMode: tx.paymentMode,
       amount: tx.type === 'Income' ? tx.payIn.toString() : tx.payOut.toString()
@@ -142,6 +144,7 @@ export function Transactions() {
       ...tx,
       date: editForm.date,
       particulars: editForm.particulars,
+      memberId: editForm.memberId || undefined,
       type: editForm.type,
       paymentMode: editForm.paymentMode,
       payIn: editForm.type === 'Income' ? numAmount : 0,
@@ -182,6 +185,7 @@ export function Transactions() {
     addTransaction({
       id: generateId(),
       groupId: activeGroupId,
+      memberId: memberId || undefined,
       date,
       particulars,
       type,
@@ -194,6 +198,7 @@ export function Transactions() {
     });
 
     setParticulars('');
+    setMemberId('');
     setAmount('');
   };
 
@@ -210,6 +215,15 @@ export function Transactions() {
             <div className="flex-[2] min-w-[200px]">
               <label className="label-small mb-1 block">Particulars</label>
               <input type="text" value={particulars} onChange={e => setParticulars(e.target.value)} required className="bento-input" />
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label className="label-small mb-1 block">Member</label>
+              <select value={memberId} onChange={e => setMemberId(e.target.value)} className="bento-select">
+                <option value="">None</option>
+                {members.filter(m => m.groupId === activeGroupId).map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className="label-small mb-1 block">Type</label>
@@ -326,6 +340,7 @@ export function Transactions() {
               <tr>
                 <th scope="col" className="w-24">Date</th>
                 <th scope="col" className="border-l-2 border-app-border">Particulars</th>
+                <th scope="col" className="border-l-2 border-app-border w-32">Member</th>
                 <th scope="col" className="text-center border-l-2 border-app-border w-28">Type</th>
                 <th scope="col" className="text-center border-l-2 border-app-border w-28">Payment Mode</th>
                 <th scope="col" className="text-right border-l-2 border-app-border w-32">Pay in</th>
@@ -343,6 +358,14 @@ export function Transactions() {
                     <>
                       <td className="p-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="bento-input py-1 px-1 text-xs w-full min-w-[100px]" /></td>
                       <td className="p-1 border-l border-app-border"><input type="text" value={editForm.particulars} onChange={e => setEditForm({...editForm, particulars: e.target.value})} className="bento-input py-1 px-2 text-sm w-full min-w-[120px]" /></td>
+                      <td className="p-1 border-l border-app-border">
+                        <select value={editForm.memberId} onChange={e => setEditForm({...editForm, memberId: e.target.value})} className="bento-input py-1 px-1 text-xs w-full min-w-[100px]">
+                          <option value="">None</option>
+                          {members.filter(m => m.groupId === activeGroupId).map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="p-1 border-l border-app-border">
                         <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value as TransactionType})} className="bento-input py-1 px-1 text-xs w-full">
                           <option value="Income">INC</option>
@@ -377,6 +400,9 @@ export function Transactions() {
                     <>
                       <td className="font-mono text-sm">{format(parseISO(tx.date), 'dd/MM/yyyy')}</td>
                       <td className="font-bold border-l border-app-border">{tx.particulars}</td>
+                      <td className="text-sm border-l border-app-border text-app-muted">
+                        {tx.memberId ? members.find(m => m.id === tx.memberId)?.name || 'Unknown' : '-'}
+                      </td>
                       <td className="text-center border-l border-app-border">
                         <span className="inline-flex px-2 py-0.5 rounded-md border border-app-border bg-app-card text-xs font-bold uppercase w-full justify-center">
                           {tx.type}
@@ -406,7 +432,7 @@ export function Transactions() {
               ))}
               {groupTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-app-muted font-bold bg-app-card">
+                  <td colSpan={11} className="py-8 text-center text-app-muted font-bold bg-app-card">
                     No transactions found.
                   </td>
                 </tr>

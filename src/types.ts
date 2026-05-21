@@ -53,6 +53,7 @@ export type PaymentMode = 'Cash' | 'Online' | 'Bank Transfer' | 'UPI' | 'Cheque'
 export interface Transaction {
   id: string;
   groupId: string;
+  memberId?: string;
   date: string;
   particulars: string;
   type: TransactionType;
