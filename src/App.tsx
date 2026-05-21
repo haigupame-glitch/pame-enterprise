@@ -17,32 +17,41 @@ import { Reports } from './pages/Reports';
 import { Login } from './pages/Login';
 import { Feedback } from './pages/Feedback';
 
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
+
 export default function App() {
   const { currentUserId, currentUserRole } = useAppContext();
 
   const isAuthenticated = !!currentUserId || currentUserRole === 'SUPER_ADMIN';
 
-  if (!isAuthenticated) {
-    return <Login onLogin={() => {}} />;
-  }
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="groups" element={<Groups />} />
-          <Route path="members" element={<Members />} />
-          <Route path="collections" element={<Collections />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="loans" element={<Loans />} />
-          <Route path="resolutions" element={<Resolutions />} />
-          <Route path="constitution" element={<Constitution />} />
-          <Route path="notices" element={<Notices />} />
-          <Route path="activities" element={<Activities />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="feedback" element={<Feedback />} />
-        </Route>
+        {/* PUBLIC ROUTES */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        
+        {/* APP ROUTES */}
+        {!isAuthenticated ? (
+          <Route path="*" element={<Login onLogin={() => {}} />} />
+        ) : (
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="groups" element={<Groups />} />
+            <Route path="members" element={<Members />} />
+            <Route path="collections" element={<Collections />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="loans" element={<Loans />} />
+            <Route path="resolutions" element={<Resolutions />} />
+            <Route path="constitution" element={<Constitution />} />
+            <Route path="notices" element={<Notices />} />
+            <Route path="activities" element={<Activities />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="feedback" element={<Feedback />} />
+            <Route path="*" element={<Dashboard />} />
+          </Route>
+        )}
       </Routes>
     </BrowserRouter>
   );

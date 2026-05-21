@@ -570,7 +570,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         </button>
 
         <div className="mt-8 text-center text-xs text-slate-500">
-          By continuing, you agree to our <a href="#" className="underline hover:text-slate-300">Terms of Service</a> and <a href="#" className="underline hover:text-slate-300">Privacy Policy</a>.
+          By continuing, you agree to our <a href="/terms-of-service" className="underline hover:text-slate-300">Terms of Service</a> and <a href="/privacy-policy" className="underline hover:text-slate-300">Privacy Policy</a>.
         </div>
       </div>
     </div>
