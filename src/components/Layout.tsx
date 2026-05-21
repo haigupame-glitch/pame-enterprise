@@ -145,6 +145,11 @@ export function Layout() {
             })}
           </ul>
         </nav>
+        
+        <div className="mt-auto pt-4 text-xs text-slate-500 flex flex-col gap-1 print:hidden">
+          <a href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+          <a href="#" className="hover:text-slate-300 transition-colors">Terms of Service</a>
+        </div>
       </aside>
 
       {/* Main content */}

@@ -568,6 +568,10 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           </svg>
           <span>Google</span>
         </button>
+
+        <div className="mt-8 text-center text-xs text-slate-500">
+          By continuing, you agree to our <a href="#" className="underline hover:text-slate-300">Terms of Service</a> and <a href="#" className="underline hover:text-slate-300">Privacy Policy</a>.
+        </div>
       </div>
     </div>
   );
