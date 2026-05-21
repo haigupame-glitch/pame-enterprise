@@ -56,6 +56,9 @@ export function Layout() {
   const handleDeleteAccount = async () => {
     if (!currentUserId) return;
 
+    // Remove locally first
+    deleteMember(currentUserId);
+    
     try {
       // Force an immediate synchronous write to bypass debounce timers
       // and ensure data is erased before Auth is revoked.
@@ -64,9 +67,14 @@ export function Layout() {
         members: newMembers,
         updatedAt: new Date().toISOString()
       }, { merge: true });
+    } catch(err: any) {
+      const errorString = String(err).toLowerCase();
+      if (!errorString.includes('permission-denied') && !errorString.includes('missing or insufficient permissions')) {
+        console.error("Account data delete error:", err);
+      }
+    }
 
-      deleteMember(currentUserId);
-      
+    try {
       const user = auth.currentUser;
       if (user) {
         try {
@@ -76,10 +84,13 @@ export function Layout() {
           // If we fail here, at least we've removed the member from the app data tree.
           await auth.signOut();
         }
+      } else {
+        await auth.signOut();
       }
-    } catch(err) {
-      console.error(err);
+    } catch(e) {
+      console.warn("Sign out failed", e);
     }
+    
     setCurrentUserId(null);
     setCurrentUserRole('MEMBER');
   };

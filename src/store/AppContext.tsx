@@ -179,7 +179,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             });
           }
         }, (error: any) => {
-          if (error?.code !== 'permission-denied' && !(error?.message && error.message.includes('Missing or insufficient permissions'))) {
+          const errorString = String(error).toLowerCase();
+          if (!errorString.includes('permission-denied') && !errorString.includes('missing or insufficient permissions')) {
             console.error("Firestore sync error:", error);
           }
         });
@@ -225,7 +226,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
           })
           .catch(err => {
-            if (err?.code === 'permission-denied' || (err?.message && err.message.includes('Missing or insufficient permissions'))) {
+            const errorString = String(err).toLowerCase();
+            if (errorString.includes('permission-denied') || errorString.includes('missing or insufficient permissions')) {
                // We just signed out or got removed. Clear pending changes and avoid logging an error gracefully.
                setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'offline' }));
             } else {
