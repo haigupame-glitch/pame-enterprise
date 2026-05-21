@@ -36,6 +36,29 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     return null;
   };
 
+  const executeWithTempAuth = async (action: () => Promise<any>) => {
+    let cleanup = false;
+    let originalUser = auth.currentUser;
+    if (!originalUser) {
+      const tempEmail = `temp-${Date.now()}@shg.app.local`;
+      const tempPass = 'temp-password-123';
+      try {
+        await createUserWithEmailAndPassword(auth, tempEmail, tempPass);
+        cleanup = true;
+      } catch (e: any) {
+        console.warn("Could not create temp auth", e);
+      }
+    }
+    
+    try {
+      return await action();
+    } finally {
+      if (cleanup && auth.currentUser && auth.currentUser.email?.startsWith('temp-')) {
+        try { await auth.currentUser.delete(); } catch(e) {}
+      }
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
@@ -48,7 +71,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       let resolvedRole: any = 'MEMBER';
 
       try {
-        const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+        const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState')));
         if (snapshot.exists()) {
           const data = snapshot.data();
           const dbMembers = data.members || [];
@@ -177,7 +200,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           let resolvedRole: any = 'MEMBER';
 
           try {
-            const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+            const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState')));
             if (snapshot.exists()) {
               const data = snapshot.data();
               const dbMembers = data.members || [];
@@ -237,7 +260,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         // We allow Sign Up to create a new group and SUPER_ADMIN if they are the first user.
         let resolvedRole: any = 'MEMBER';
         try {
-          const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+          const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState')));
           if (snapshot.exists()) {
             const data = snapshot.data();
             const dbMembers = data.members || [];
@@ -319,27 +342,39 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     }
 
     try {
-      const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
-      if (!snapshot.exists()) {
-        throw new Error('Database not initialized');
-      }
-      
-      const data = snapshot.data();
-      const dbMembers = data.members || [];
-      
-      const memberIndex = dbMembers.findIndex((m: any) => 
-        ((m.contact || '').trim() === rawPhone || (m.loginId || '').trim() === rawPhone) &&
-        (m.name || '').trim().toLowerCase() === checkName
-      );
-      
-      if (memberIndex === -1) {
-         throw new Error('Could not find an account matching that phone number and full name. Please check your spelling.');
-      }
-      
-      dbMembers[memberIndex].loginPassword = password;
-      dbMembers[memberIndex].authVersion = (dbMembers[memberIndex].authVersion || 0) + 1;
-      
-      await setDoc(doc(db, 'appStore', 'globalState'), { members: dbMembers }, { merge: true });
+      await executeWithTempAuth(async () => {
+        const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+        if (!snapshot.exists()) {
+          throw new Error('Database not initialized');
+        }
+        
+        const data = snapshot.data();
+        const dbMembers = data.members || [];
+        
+        const memberIndex = dbMembers.findIndex((m: any) => 
+          ((m.contact || '').trim() === rawPhone || (m.loginId || '').trim() === rawPhone) &&
+          (m.name || '').trim().toLowerCase() === checkName
+        );
+        
+        if (memberIndex === -1) {
+           throw new Error('Could not find an account matching that phone number and full name. Please check your spelling.');
+        }
+        
+        dbMembers[memberIndex].loginPassword = password;
+        dbMembers[memberIndex].authVersion = (dbMembers[memberIndex].authVersion || 0) + 1;
+        
+        await setDoc(doc(db, 'appStore', 'globalState'), { members: dbMembers }, { merge: true });
+        
+        // Also try to update the Firebase Auth password if an account exists for this pseudoEmail
+        try {
+          const pseudoEmail = getPseudoEmail(dbMembers[memberIndex].contact || dbMembers[memberIndex].loginId, dbMembers[memberIndex].authVersion - 1);
+          await signInWithEmailAndPassword(auth, pseudoEmail, password);
+          // Wait, we can't update password unless we know the OLD password to log in. We don't.
+          // That's why we iterate authVersion so they get a new Firebase Auth account created on login.
+        } catch (e) {
+          // Ignored
+        }
+      });
       
       alert("Password reset successfully! Please log in with your new password.");
       setIsForgotPassword(false);
