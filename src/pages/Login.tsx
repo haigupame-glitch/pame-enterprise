@@ -62,8 +62,10 @@ export function Login({ onLogin }: { onLogin: () => void }) {
               resolvedId = foundMember.id;
               resolvedRole = foundMember.role || 'MEMBER';
             } else {
-              // Not matched strictly, but let's just make them a member if the app is open
-              resolvedRole = 'MEMBER';
+              auth.signOut();
+              setError('Access denied. You are not a registered member of this organization.');
+              setLoading(false);
+              return;
             }
           }
         } else {
@@ -195,9 +197,8 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                   resolvedId = foundMember.id;
                   resolvedRole = foundMember.role || 'MEMBER';
                 } else {
-                  // Legacy SUPER_ADMIN recovery: they have an auth account but no Member struct
-                  resolvedId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
-                  resolvedRole = 'SUPER_ADMIN';
+                  auth.signOut();
+                  throw new Error('Access denied. Account not found.');
                 }
               }
             } else {
@@ -233,7 +234,30 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           return;
         }
 
-        // We allow Sign Up to create a new group and SUPER_ADMIN.
+        // We allow Sign Up to create a new group and SUPER_ADMIN if they are the first user.
+        let resolvedRole: any = 'MEMBER';
+        try {
+          const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            const dbMembers = data.members || [];
+            if (dbMembers.length === 0) {
+               resolvedRole = 'SUPER_ADMIN';
+            } else {
+               setError('Application already initialized. New registrations are not permitted. Existing members, please use Sign In.');
+               setLoading(false);
+               return;
+            }
+          } else {
+             resolvedRole = 'SUPER_ADMIN';
+          }
+        } catch(err) {
+          console.error("Could not check global state for signup", err);
+          setError('Could not access database. Please try again.');
+          setLoading(false);
+          return;
+        }
+
         try {
           await createUserWithEmailAndPassword(auth, pseudoEmail, password);
         } catch (err: any) {
@@ -244,23 +268,22 @@ export function Login({ onLogin }: { onLogin: () => void }) {
            }
         }
 
-        const adminId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
+        const newUserId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
         
-        // Setup initial role so addGroup/addMember doesn't block
-        setCurrentUserRole('SUPER_ADMIN');
-        setCurrentUserId(adminId);
+        setCurrentUserRole(resolvedRole);
+        setCurrentUserId(newUserId);
 
-        // Create the admin member
+        // Create the member
         addMember({
-          id: adminId,
+          id: newUserId,
           groupId: 'PENDING',
           name: adminName,
           contact: rawPhone,
           loginId: rawPhone,
           loginPassword: password,
-          role: 'SUPER_ADMIN',
+          role: resolvedRole,
           joinDate: new Date().toISOString(),
-          memberNumber: 'ADMIN-01'
+          memberNumber: resolvedRole === 'SUPER_ADMIN' ? 'ADMIN-01' : undefined
         });
 
         onLogin();

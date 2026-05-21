@@ -178,8 +178,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               return prev;
             });
           }
-        }, (error) => {
-          console.error("Firestore sync error:", error);
+        }, (error: any) => {
+          if (error?.code !== 'permission-denied' && !(error?.message && error.message.includes('Missing or insufficient permissions'))) {
+            console.error("Firestore sync error:", error);
+          }
         });
       } else {
         if (unsubscribeSnapshot) unsubscribeSnapshot();
@@ -200,6 +202,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState(prev => ({ ...prev, syncStatus: 'syncing' }));
       
       const timer = setTimeout(() => {
+        if (!auth.currentUser) {
+           setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
+           return;
+        }
         const payload = {
           groups: state.groups,
           members: state.members,
@@ -219,8 +225,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
           })
           .catch(err => {
-            console.error('Sync failed', err);
-            setState(prev => ({ ...prev, syncStatus: 'offline' }));
+            if (err?.code === 'permission-denied' || (err?.message && err.message.includes('Missing or insufficient permissions'))) {
+               // We just signed out or got removed. Clear pending changes and avoid logging an error gracefully.
+               setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'offline' }));
+            } else {
+               console.error('Sync failed', err);
+               setState(prev => ({ ...prev, syncStatus: 'offline' }));
+            }
           });
       }, 2000); // Debounce for 2 seconds
 
@@ -285,12 +296,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     updateState({ groups: [...state.groups, group], activeGroupId: group.id });
     
-    // If the current user doesn't have a group, update them to this newly created group and make them SUPER_ADMIN
+    // If the current user doesn't have a group, update them to this newly created group and make them ADMIN
     if (isNewUserWithoutGroup) {
        const updatedMembers = state.members.map(m => 
-          m.id === state.currentUserId ? { ...m, groupId: group.id, role: 'SUPER_ADMIN' as Role } : m
+          m.id === state.currentUserId ? { ...m, groupId: group.id, role: 'ADMIN' as Role } : m
        );
-       updateState({ members: updatedMembers, currentUserRole: 'SUPER_ADMIN' });
+       updateState({ members: updatedMembers, currentUserRole: 'ADMIN' });
     }
   };
   

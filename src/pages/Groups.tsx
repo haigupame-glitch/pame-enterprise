@@ -219,10 +219,10 @@ export function Groups() {
                       )}
                     </tr>
                   ))}
-                  {groups.length === 0 && (
+                  {groups.filter(g => currentUserRole === 'SUPER_ADMIN' || g.id === activeGroupId).length === 0 && (
                     <tr>
                       <td colSpan={3} className="py-8 text-center text-app-muted">
-                        No groups created yet.
+                        No groups available.
                       </td>
                     </tr>
                   )}

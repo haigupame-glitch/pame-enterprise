@@ -5,7 +5,8 @@ import { useAppContext } from '../store/AppContext';
 import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import type { Role } from '../types';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { ConfirmDialog } from './ConfirmDialog';
 
 const navigation = [
@@ -56,9 +57,15 @@ export function Layout() {
     if (!currentUserId) return;
 
     try {
-      // Allow the state update to trigger sync (Firestore debounce is 2000ms)
+      // Force an immediate synchronous write to bypass debounce timers
+      // and ensure data is erased before Auth is revoked.
+      const newMembers = members.filter(m => m.id !== currentUserId);
+      await setDoc(doc(db, 'appStore', 'globalState'), {
+        members: newMembers,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
       deleteMember(currentUserId);
-      await new Promise(resolve => setTimeout(resolve, 2500));
       
       const user = auth.currentUser;
       if (user) {

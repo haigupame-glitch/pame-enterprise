@@ -4,7 +4,7 @@ import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
 export function Dashboard() {
-  const { groups, members, transactions, activeGroupId } = useAppContext();
+  const { groups, members, transactions, activeGroupId, currentUserRole } = useAppContext();
   
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
@@ -59,14 +59,16 @@ export function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bento-card relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-24 h-24 bg-slate-800/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-          <div className="card-header">
-            TOTAL GROUPS
-            <Building className="h-4 w-4 text-app-muted" strokeWidth={1.5} />
+        {currentUserRole === 'SUPER_ADMIN' && (
+          <div className="bento-card relative overflow-hidden group">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-slate-800/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+            <div className="card-header">
+              TOTAL GROUPS
+              <Building className="h-4 w-4 text-app-muted" strokeWidth={1.5} />
+            </div>
+            <div className="stat-huge z-10 relative">{groups.length}</div>
           </div>
-          <div className="stat-huge z-10 relative">{groups.length}</div>
-        </div>
+        )}
         
         {activeGroup && (
           <>
