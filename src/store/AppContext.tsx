@@ -339,7 +339,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveCollection = (col: Collection) => {
     if (!enforceTreasurerOrAbove()) return;
     const existingIndex = state.collections.findIndex(
-      c => c.groupId === col.groupId && c.memberId === col.memberId && c.year === col.year && c.month === col.month
+      c => c.groupId === col.groupId && c.memberId === col.memberId && Number(c.year) === Number(col.year) && Number(c.month) === Number(col.month)
     );
     if (existingIndex >= 0) {
       const newCols = [...state.collections];

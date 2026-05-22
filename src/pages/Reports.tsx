@@ -33,8 +33,8 @@ export function Reports() {
   const groupTransactions = transactions.filter(t => t.groupId === activeGroupId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const availableYears = Array.from(
-    new Set(groupCollections.map(c => c.year))
-  ).filter(y => typeof y === 'number' && !isNaN(y));
+    new Set(groupCollections.map(c => Number(c.year)))
+  ).filter((y): y is number => !isNaN(y as number));
   if (!availableYears.includes(new Date().getFullYear())) availableYears.push(new Date().getFullYear());
   if (!availableYears.includes(safeReportYear) && !isNaN(safeReportYear)) availableYears.push(safeReportYear);
   availableYears.sort((a, b) => Number(b) - Number(a));
@@ -176,7 +176,7 @@ export function Reports() {
   };
 
   const renderMembersReport = () => {
-    const yearCollections = groupCollections.filter(c => c.year === safeReportYear);
+    const yearCollections = groupCollections.filter(c => Number(c.year) === Number(safeReportYear));
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     return (
@@ -201,7 +201,7 @@ export function Reports() {
             <h3 className="text-xl font-bold text-app-text mb-0">MEMBERSHIP FEES SUMMARY</h3>
             <span className="font-black text-app-primary">For Year : {safeReportYear}</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
             <table className="w-full text-sm border-collapse border border-gray-300">
               <thead>
                 <tr className="bg-gray-100 text-xs">
@@ -221,7 +221,7 @@ export function Reports() {
                       <td className="border border-gray-300 p-1.5 text-center font-mono">{index + 1}</td>
                       <td className="border border-gray-300 p-1.5 font-bold whitespace-nowrap">{member.name}</td>
                       {Array.from({ length: 12 }).map((_, monthIndex) => {
-                        const monthCol = memberCollections.filter(c => c.month === monthIndex);
+                        const monthCol = memberCollections.filter(c => Number(c.month) === monthIndex);
                         const totalForMonth = monthCol.reduce((sum, c) => sum + c.amount, 0);
                         return (
                           <td key={monthIndex} className="border border-gray-300 p-1.5 text-center font-mono text-xs">
@@ -323,7 +323,7 @@ export function Reports() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
               <table className="w-full text-sm border-collapse border border-gray-300">
                 <thead>
                   <tr className="bg-gray-100">
@@ -434,16 +434,17 @@ export function Reports() {
           <div className="p-4 border-b-2 border-app-border bg-app-bg">
             <h3 className="card-header !mb-0 text-app-text">LOAN PORTFOLIO REPORT</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
             <table className="bento-table">
               <thead>
                 <tr>
                   <th>Member</th>
                   <th>Issue Date</th>
                   <th className="text-right">Principal</th>
-                  <th className="text-right">Repaid</th>
-                  <th className="text-right">Outstanding</th>
+                  <th className="text-right">Principal Repaid</th>
                   <th className="text-right">Interest Paid</th>
+                  <th className="text-right">Total Paid</th>
+                  <th className="text-right">Outstanding</th>
                   <th className={`text-center print:hidden ${isGeneratingPdf ? 'hidden' : ''}`}>Action</th>
                 </tr>
               </thead>
@@ -456,8 +457,9 @@ export function Reports() {
                       <td className="font-mono text-sm text-app-muted">{format(new Date(loan.issueDate), 'dd MMM yyyy')}</td>
                       <td className="text-right font-mono">{formatCurrency(loan.principal)}</td>
                       <td className="text-right font-mono text-app-accent font-bold">{formatCurrency(loan.repaidPrincipal)}</td>
-                      <td className="text-right font-mono text-red-600 font-bold">{formatCurrency(loan.outstanding)}</td>
                       <td className="text-right font-mono text-app-primary">{formatCurrency(loan.paidInterest)}</td>
+                      <td className="text-right font-mono text-emerald-500 font-bold">{formatCurrency(loan.repaidPrincipal + loan.paidInterest)}</td>
+                      <td className="text-right font-mono text-red-600 font-bold">{formatCurrency(loan.outstanding)}</td>
                       <td className={`text-center print:hidden ${isGeneratingPdf ? 'hidden' : ''}`}>
                         <button 
                           onClick={() => setSelectedLoanId(loan.id)}
@@ -508,7 +510,7 @@ export function Reports() {
           <div className="p-4 border-b-2 border-app-border bg-app-bg">
             <h3 className="card-header !mb-0 text-app-text">TRANSACTION LEDGER REPORT</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
             <table className="bento-table">
               <thead>
                 <tr>
@@ -594,7 +596,7 @@ export function Reports() {
         </div>
       </div>
 
-      <div ref={reportRef} className={`print:block ${isGeneratingPdf ? 'p-8 bg-white text-black' : ''}`}>
+      <div ref={reportRef} className={`print:block ${isGeneratingPdf ? 'p-8 bg-white text-black min-w-max min-h-max' : ''}`}>
         <div className={`${isGeneratingPdf ? "block" : "hidden print:block"} mb-8 text-center pb-4 border-b-2 border-app-border`}>
           {activeGroup?.logo && (
             <img src={activeGroup.logo} alt="Logo" className="w-24 h-24 object-contain mx-auto mb-4" />

@@ -43,13 +43,14 @@ export function Loans() {
   const exportLoansToCSV = () => {
     if (!groupLoans.length) return;
 
-    const headers = ['SL No.', 'Member Name', 'Member ID No.', 'Contact', 'Sanction Date', 'Due Date', 'Principal', 'Interest Rate /mo', 'Principal Repaid', 'Remaining Balance', 'Status'];
+    const headers = ['SL No.', 'Member Name', 'Member ID No.', 'Contact', 'Sanction Date', 'Due Date', 'Principal', 'Interest Rate /mo', 'Principal Repaid', 'Interest Paid', 'Total Paid', 'Remaining Balance', 'Status'];
     const csvData = [
       headers.join(','),
       ...groupLoans.map((loan, index) => {
         const member = groupMembers.find(m => m.id === loan.memberId);
         const reps = loanRepayments.filter(r => r.loanId === loan.id);
         const totalPrincipalRepaid = reps.reduce((sum, r) => sum + r.principalAmount, 0);
+        const totalInterestPaid = reps.reduce((sum, r) => sum + r.interestAmount, 0);
         const remaining = loan.principal - totalPrincipalRepaid;
         const dueDate = loan.dueDate ? format(new Date(loan.dueDate), 'yyyy-MM-dd') : (loan.loanTerm ? format(addMonths(new Date(loan.issueDate), loan.loanTerm), 'yyyy-MM-dd') : '');
         
@@ -63,6 +64,8 @@ export function Loans() {
           loan.principal,
           loan.interestRate,
           totalPrincipalRepaid,
+          totalInterestPaid,
+          totalPrincipalRepaid + totalInterestPaid,
           remaining,
           `"${remaining <= 0 ? 'REPAID' : 'ACTIVE'}"`
         ].join(',');
@@ -389,7 +392,7 @@ export function Loans() {
             {!canEdit ? (
               <p className="text-app-muted">Only Admins can record repayments.</p>
             ) : (
-              <form onSubmit={handleAddRepayment} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <form onSubmit={handleAddRepayment} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div>
                   <label className="label-small mb-1 block">Payment Date</label>
                   <input type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} required className="bento-input" />
@@ -401,6 +404,10 @@ export function Loans() {
                 <div>
                   <label className="label-small mb-1 block">Interest Amount</label>
                   <input type="number" value={repayInterest} onChange={e => setRepayInterest(e.target.value)} className="bento-input" />
+                </div>
+                <div>
+                  <label className="label-small mb-1 block">Total Amount</label>
+                  <input type="number" value={(parseFloat(repayPrincipal || '0') + parseFloat(repayInterest || '0')).toString()} readOnly className="bento-input bg-slate-800/50 cursor-not-allowed opacity-70" />
                 </div>
                 <div>
                   <button type="submit" className="bento-btn bento-btn-primary w-full">Save Entry</button>

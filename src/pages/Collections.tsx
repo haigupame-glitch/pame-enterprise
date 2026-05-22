@@ -26,7 +26,7 @@ export function Collections() {
   };
 
   const getAmount = (memberId: string, month: number) => {
-    const col = collections.find(c => c.groupId === activeGroupId && c.memberId === memberId && c.year === year && c.month === month);
+    const col = collections.find(c => c.groupId === activeGroupId && c.memberId === memberId && Number(c.year) === Number(year) && Number(c.month) === Number(month));
     return col && !isNaN(col.amount) ? col.amount : '';
   };
 
