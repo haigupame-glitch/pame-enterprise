@@ -13,6 +13,9 @@ export function Groups() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  
+  const [switchingGroupId, setSwitchingGroupId] = useState<string | null>(null);
+  const [switchPasswordInput, setSwitchPasswordInput] = useState('');
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const canEdit = currentUserRole === 'SUPER_ADMIN' || !activeGroup;
@@ -26,6 +29,8 @@ export function Groups() {
   const [accountNumber, setAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [upiId, setUpiId] = useState('');
+  const [switchPasswordValue, setSwitchPasswordValue] = useState('');
+  const [newGroupPassword, setNewGroupPassword] = useState('');
   const [cropModalData, setCropModalData] = useState<{ src: string; isLogo: boolean } | null>(null);
 
   useEffect(() => {
@@ -38,6 +43,7 @@ export function Groups() {
       setAccountNumber(activeGroup.accountNumber || '');
       setIfscCode(activeGroup.ifscCode || '');
       setUpiId(activeGroup.upiId || '');
+      setSwitchPasswordValue(activeGroup.switchPassword || '');
     }
   }, [activeGroup]);
 
@@ -50,8 +56,10 @@ export function Groups() {
       name: name.trim(),
       createdDate: new Date().toISOString(),
       constitution: '',
+      switchPassword: newGroupPassword
     });
     setName('');
+    setNewGroupPassword('');
   };
 
   const handleUpdateConstitution = () => {
@@ -70,7 +78,8 @@ export function Groups() {
         accountName,
         accountNumber,
         ifscCode,
-        upiId
+        upiId,
+        switchPassword: switchPasswordValue
       });
       alert('Group information saved successfully!');
     }
@@ -102,6 +111,20 @@ export function Groups() {
     setCropModalData(null);
   };
 
+  const handleSwitchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (switchingGroupId) {
+      const targetGroup = groups.find(g => g.id === switchingGroupId);
+      if (targetGroup?.switchPassword && targetGroup.switchPassword !== switchPasswordInput) {
+        alert('Incorrect group password!');
+        return;
+      }
+      setActiveGroup(switchingGroupId);
+      setSwitchingGroupId(null);
+      setSwitchPasswordInput('');
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {cropModalData && (
@@ -116,12 +139,16 @@ export function Groups() {
       {canEdit && (
         <div className="bento-card">
           <div className="card-header">CREATE NEW SHG GROUP</div>
-          <form onSubmit={handleSubmit} className="flex gap-4 items-end">
-            <div className="flex-1">
-              <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Group Name</label>
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+            <div className="flex-1 w-full">
+              <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Group Name *</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)} required className="bento-input w-full py-2" placeholder="My SHG Group" />
             </div>
-            <button type="submit" className="bento-btn py-2 px-6 h-fit shrink-0">Create Group</button>
+            <div className="flex-1 w-full">
+              <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Group Switch Password</label>
+              <input type="password" value={newGroupPassword} onChange={e => setNewGroupPassword(e.target.value)} className="bento-input w-full py-2" placeholder="Optional security password" />
+            </div>
+            <button type="submit" className="bento-btn py-2 px-6 h-fit shrink-0 w-full sm:w-auto">Create Group</button>
           </form>
         </div>
       )}
@@ -192,7 +219,13 @@ export function Groups() {
                             <div className="flex gap-3">
                               {group.id !== activeGroupId && (
                                 <button
-                                  onClick={() => setActiveGroup(group.id)}
+                                  onClick={() => {
+                                    if (!group.switchPassword) {
+                                      setActiveGroup(group.id);
+                                    } else {
+                                      setSwitchingGroupId(group.id);
+                                    }
+                                  }}
                                   className="text-xs font-bold text-app-accent hover:underline"
                                 >
                                   Switch
@@ -355,6 +388,17 @@ export function Groups() {
                         disabled={!canEditGroupDetails}
                       />
                     </div>
+                    <div>
+                      <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Group Password (For Switching)</label>
+                      <input
+                        type="password"
+                        value={switchPasswordValue}
+                        onChange={(e) => setSwitchPasswordValue(e.target.value)}
+                        className="bento-input w-full py-1.5 disabled:opacity-50"
+                        placeholder="Leave blank to allow any user to join"
+                        disabled={!canEditGroupDetails}
+                      />
+                    </div>
                  </div>
                  <div className="flex flex-col items-center justify-center p-4 bg-app-card rounded-xl border-2 border-dashed border-app-border h-full min-h-[200px]">
                     {upiId ? (
@@ -417,6 +461,30 @@ export function Groups() {
         }}
         onCancel={() => setDeletingGroupId(null)}
       />
+
+      {switchingGroupId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-app-card border border-app-border rounded-xl shadow-2xl p-6 max-w-sm w-full">
+            <h3 className="text-xl font-bold mb-2">Switch Group Security</h3>
+            <p className="text-sm text-app-muted mb-4">This group requires a password to enter.</p>
+            <form onSubmit={handleSwitchSubmit}>
+              <input 
+                type="password" 
+                value={switchPasswordInput}
+                onChange={e => setSwitchPasswordInput(e.target.value)}
+                placeholder="Group Password" 
+                className="bento-input mb-4" 
+                autoFocus
+                required 
+              />
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => { setSwitchingGroupId(null); setSwitchPasswordInput(''); }} className="bento-btn bg-slate-800 text-white hover:bg-slate-700">Cancel</button>
+                <button type="submit" className="bento-btn bento-btn-primary">Unlock</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

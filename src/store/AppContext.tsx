@@ -92,7 +92,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           
           try {
             savedState = await Promise.race([
-              localforage.getItem('shg_app_data_v2'),
+              localforage.getItem('shg_app_data_v3'),
               timeoutPromise
             ]);
           } finally {
@@ -104,10 +104,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         
         if (!savedState) {
           // Check localStorage for migration
-          const legacySaved = localStorage.getItem('shg_app_data_v2');
+          const legacySaved = localStorage.getItem('shg_app_data_v3');
           if (legacySaved) {
             savedState = JSON.parse(legacySaved);
-            localStorage.removeItem('shg_app_data_v2'); // cleanup after migration
+            localStorage.removeItem('shg_app_data_v3'); // cleanup after migration
           }
         }
         if (savedState) {
@@ -152,7 +152,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const unsubscribeAuth = auth.onAuthStateChanged(user => {
       if (user) {
         // Subscribe to firestore
-        unsubscribeSnapshot = onSnapshot(doc(db, 'appStore', 'globalState_967c2d0c'), { includeMetadataChanges: true }, (snapshot) => {
+        unsubscribeSnapshot = onSnapshot(doc(db, 'appStore', 'globalState_v3_967c2d0c'), { includeMetadataChanges: true }, (snapshot) => {
           if (snapshot.exists() && !snapshot.metadata.hasPendingWrites) {
             const data = snapshot.data() as any;
             setState(prev => ({
@@ -221,7 +221,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           updatedAt: new Date().toISOString()
         };
         
-        setDoc(doc(db, 'appStore', 'globalState_967c2d0c'), payload, { merge: true })
+        setDoc(doc(db, 'appStore', 'globalState_v3_967c2d0c'), payload, { merge: true })
           .then(() => {
             setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
           })
@@ -257,7 +257,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoaded) {
-      localforage.setItem('shg_app_data_v2', state).catch(e => {
+      localforage.setItem('shg_app_data_v3', state).catch(e => {
         console.error('Failed to save to localforage:', e);
       });
     }
