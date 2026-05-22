@@ -25,15 +25,15 @@ export function Members() {
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
-  const canAddMember = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const canAddMember = currentUserRole === 'SUPER_ADMIN' || (currentUserRole === 'ADMIN' && activeGroup?.allowAdminEdit);
 
   const canEditMember = (memberId: string) => {
-    if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') return true;
+    if (currentUserRole === 'SUPER_ADMIN' || (currentUserRole === 'ADMIN' && activeGroup?.allowAdminEdit)) return true;
     if (currentUserRole === 'MEMBER' && currentUserId === memberId) return true;
     return false;
   };
 
-  const canDeleteMember = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const canDeleteMember = currentUserRole === 'SUPER_ADMIN';
 
   const exportToCSV = () => {
     if (!groupMembers.length) return;
@@ -219,11 +219,51 @@ export function Members() {
                   <td className="text-app-muted font-mono">{idx + 1}</td>
                   {editingId === member.id ? (
                     <>
-                      <td className="p-2"><input type="text" value={editForm.memberNumber} onChange={e => setEditForm({...editForm, memberNumber: e.target.value})} className="bento-input py-1 px-2 text-sm w-full min-w-[80px]" placeholder="ID" /></td>
-                      <td className="p-2"><input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="bento-input py-1 px-2 text-sm w-full min-w-[120px]" /></td>
-                      <td className="p-2"><input type="text" value={editForm.contact} onChange={e => setEditForm({...editForm, contact: e.target.value})} className="bento-input py-1 px-2 text-sm w-full min-w-[100px]" /></td>
-                      <td className="p-2"><input type="text" value={editForm.aadharNumber} onChange={e => setEditForm({...editForm, aadharNumber: e.target.value})} className="bento-input py-1 px-2 text-sm font-mono w-full min-w-[120px]" /></td>
-                      <td className="p-2"><input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="bento-input py-1 px-2 text-sm w-full min-w-[140px]" /></td>
+                      <td className="p-2">
+                        <input 
+                          type="text" 
+                          value={editForm.memberNumber} 
+                          onChange={e => setEditForm({...editForm, memberNumber: e.target.value})} 
+                          className="bento-input py-1 px-2 text-sm w-full min-w-[80px]" 
+                          placeholder="ID" 
+                          disabled={currentUserRole !== 'SUPER_ADMIN' && currentUserRole !== 'ADMIN'}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input 
+                          type="text" 
+                          value={editForm.name} 
+                          onChange={e => setEditForm({...editForm, name: e.target.value})} 
+                          className="bento-input py-1 px-2 text-sm w-full min-w-[120px]" 
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input 
+                          type="text" 
+                          value={editForm.contact} 
+                          onChange={e => setEditForm({...editForm, contact: e.target.value})} 
+                          className="bento-input py-1 px-2 text-sm w-full min-w-[100px]" 
+                          disabled={currentUserRole !== 'SUPER_ADMIN' && currentUserRole !== 'ADMIN'}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input 
+                          type="text" 
+                          value={editForm.aadharNumber} 
+                          onChange={e => setEditForm({...editForm, aadharNumber: e.target.value})} 
+                          className="bento-input py-1 px-2 text-sm font-mono w-full min-w-[120px]" 
+                          disabled={currentUserRole !== 'SUPER_ADMIN' && currentUserRole !== 'ADMIN'}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input 
+                          type="text" 
+                          value={editForm.address} 
+                          onChange={e => setEditForm({...editForm, address: e.target.value})} 
+                          className="bento-input py-1 px-2 text-sm w-full min-w-[140px]" 
+                          disabled={currentUserRole !== 'SUPER_ADMIN' && currentUserRole !== 'ADMIN'}
+                        />
+                      </td>
                       <td className="text-sm text-app-muted">{format(new Date(member.joinDate), 'dd/MM/yy')}</td>
                       <td className="text-right">
                         <div className="flex justify-end gap-2">
@@ -257,7 +297,7 @@ export function Members() {
                       {(canAddMember || currentUserRole === 'MEMBER') && (
                         <td className="text-right">
                           <div className="flex justify-end gap-2 items-center">
-                            {(currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') && (
+                            {canAddMember && (
                               <button onClick={() => setSelectedMemberForLogin(member)} className="flex items-center gap-1.5 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 px-2 py-1 rounded transition-colors" title="Manage Access">
                                 <Key className="w-4 h-4" />
                                 <span className="text-xs font-medium">Manage Access</span>

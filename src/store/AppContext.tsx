@@ -295,8 +295,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setActiveGroup = (id: string | null) => updateState({ activeGroupId: id });
   
   const enforceSuperAdmin = () => state.currentUserRole === 'SUPER_ADMIN';
-  const enforceAdminOrAbove = () => state.currentUserRole === 'SUPER_ADMIN' || state.currentUserRole === 'ADMIN';
-  const enforceTreasurerOrAbove = () => state.currentUserRole === 'SUPER_ADMIN' || state.currentUserRole === 'ADMIN' || state.currentUserRole === 'TREASURER';
+  const enforceAdminOrAbove = () => {
+    if (state.currentUserRole === 'SUPER_ADMIN') return true;
+    const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
+    return state.currentUserRole === 'ADMIN' && !!activeGroup?.allowAdminEdit;
+  };
+  const enforceTreasurerOrAbove = () => {
+    if (state.currentUserRole === 'SUPER_ADMIN') return true;
+    const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
+    if (state.currentUserRole === 'ADMIN' && !!activeGroup?.allowAdminEdit) return true;
+    if (state.currentUserRole === 'TREASURER' && !!activeGroup?.allowTreasurerEdit) return true;
+    return false;
+  };
 
   const addGroup = (group: Group) => {
     // If they already have a group and aren't SUPER_ADMIN, block. But if they're grouped we allow Super admin.
@@ -352,8 +362,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const deleteMember = (id: string) => {
-    const isSelf = state.currentUserId === id;
-    if (!enforceAdminOrAbove() && !isSelf) return;
+    if (!enforceSuperAdmin()) return;
     updateState({ members: state.members.filter(m => m.id !== id) });
   };
 
@@ -427,14 +436,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const updateConstitution = (groupId: string, constitution: string) => {
-    if (!enforceTreasurerOrAbove()) return;
+    if (!enforceAdminOrAbove()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, constitution } : g)
     });
   };
 
   const updateGroup = (groupId: string, data: Partial<Group>) => {
-    if (!enforceTreasurerOrAbove()) return;
+    if (!enforceAdminOrAbove()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, ...data } : g)
     });
@@ -449,7 +458,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateGroupLogo = (groupId: string, logo: string) => {
-    if (!enforceTreasurerOrAbove()) return;
+    if (!enforceAdminOrAbove()) return;
     updateState({
       groups: state.groups.map(g => g.id === groupId ? { ...g, logo } : g)
     });

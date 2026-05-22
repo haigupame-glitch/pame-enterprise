@@ -20,6 +20,8 @@ export interface Group {
   accountNumber?: string;
   ifscCode?: string;
   upiId?: string;
+  allowAdminEdit?: boolean;
+  allowTreasurerEdit?: boolean;
 }
 
 export interface Member {

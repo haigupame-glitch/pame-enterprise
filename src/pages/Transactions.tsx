@@ -76,7 +76,8 @@ export function Transactions() {
     return filtered;
   }, [transactions, activeGroupId, filterQuery, filterStartDate, filterEndDate, filterType, filterPaymentMode]);
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
+  const activeGroup = groups.find(g => g.id === activeGroupId);
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || (currentUserRole === 'TREASURER' && activeGroup?.allowTreasurerEdit);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ date: '', particulars: '', memberId: '', type: 'Income' as TransactionType, paymentMode: 'Cash' as PaymentMode, amount: '' });

@@ -38,7 +38,7 @@ export function Loans() {
 
   const getMemberName = (id: string) => members.find(m => m.id === id)?.name || 'Unknown';
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || (currentUserRole === 'TREASURER' && activeGroup?.allowTreasurerEdit);
 
   const exportLoansToCSV = () => {
     if (!groupLoans.length) return;

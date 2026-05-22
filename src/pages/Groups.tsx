@@ -19,7 +19,7 @@ export function Groups() {
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const canEdit = currentUserRole === 'SUPER_ADMIN' || !activeGroup;
-  const canEditGroupDetails = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
+  const canEditGroupDetails = currentUserRole === 'SUPER_ADMIN' || (currentUserRole === 'ADMIN' && activeGroup?.allowAdminEdit);
 
   const [constitutionText, setConstitutionText] = useState('');
   const [contactText, setContactText] = useState('');
@@ -30,6 +30,8 @@ export function Groups() {
   const [ifscCode, setIfscCode] = useState('');
   const [upiId, setUpiId] = useState('');
   const [switchPasswordValue, setSwitchPasswordValue] = useState('');
+  const [allowAdminEdit, setAllowAdminEdit] = useState(false);
+  const [allowTreasurerEdit, setAllowTreasurerEdit] = useState(false);
   const [newGroupPassword, setNewGroupPassword] = useState('');
   const [cropModalData, setCropModalData] = useState<{ src: string; isLogo: boolean } | null>(null);
 
@@ -44,6 +46,8 @@ export function Groups() {
       setIfscCode(activeGroup.ifscCode || '');
       setUpiId(activeGroup.upiId || '');
       setSwitchPasswordValue(activeGroup.switchPassword || '');
+      setAllowAdminEdit(!!activeGroup.allowAdminEdit);
+      setAllowTreasurerEdit(!!activeGroup.allowTreasurerEdit);
     }
   }, [activeGroup]);
 
@@ -79,7 +83,9 @@ export function Groups() {
         accountNumber,
         ifscCode,
         upiId,
-        switchPassword: switchPasswordValue
+        switchPassword: switchPasswordValue,
+        allowAdminEdit,
+        allowTreasurerEdit
       });
       alert('Group information saved successfully!');
     }
@@ -399,6 +405,28 @@ export function Groups() {
                         disabled={!canEditGroupDetails}
                       />
                     </div>
+                    {currentUserRole === 'SUPER_ADMIN' && (
+                      <div className="flex gap-4 p-4 mt-2 border border-app-border rounded-xl">
+                        <label className="flex items-center gap-2 text-sm text-app-text cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={allowAdminEdit}
+                            onChange={(e) => setAllowAdminEdit(e.target.checked)}
+                            className="rounded border-app-border text-app-primary focus:ring-app-primary focus:ring-offset-0 bg-transparent"
+                          />
+                          Allow Admins to edit Group settings
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-app-text cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={allowTreasurerEdit}
+                            onChange={(e) => setAllowTreasurerEdit(e.target.checked)}
+                            className="rounded border-app-border text-app-primary focus:ring-app-primary focus:ring-offset-0 bg-transparent"
+                          />
+                          Allow Treasurers to edit finances
+                        </label>
+                      </div>
+                    )}
                  </div>
                  <div className="flex flex-col items-center justify-center p-4 bg-app-card rounded-xl border-2 border-dashed border-app-border h-full min-h-[200px]">
                     {upiId ? (
