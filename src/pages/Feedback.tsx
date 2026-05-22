@@ -79,9 +79,9 @@ export function Feedback() {
         </form>
       </div>
 
-      {isAdmin && groupFeedbacks.length > 0 && (
+      {groupFeedbacks.length > 0 && (
         <div className="space-y-4 pt-6 mt-6 border-t border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-800">Recent Feedback (Admin View)</h2>
+          <h2 className="text-lg font-semibold text-slate-800">Recent Feedback</h2>
           <div className="grid gap-4">
             {groupFeedbacks.slice().reverse().map(fb => {
               const author = members.find(m => m.id === fb.userId);

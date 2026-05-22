@@ -8,7 +8,7 @@ import { Edit2, Trash2, Check, X, Search, FilterX } from 'lucide-react';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Transactions() {
-  const { transactions, members, activeGroupId, addTransaction, updateTransaction, deleteTransaction, currentUserRole } = useAppContext();
+  const { transactions, members, groups, activeGroupId, addTransaction, updateTransaction, deleteTransaction, currentUserRole } = useAppContext();
   
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [particulars, setParticulars] = useState('');
