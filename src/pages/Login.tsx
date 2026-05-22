@@ -71,7 +71,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       let resolvedRole: any = 'MEMBER';
 
       try {
-        const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState')));
+        const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState_967c2d0c')));
         if (snapshot.exists()) {
           const data = snapshot.data();
           const dbMembers = data.members || [];
@@ -200,7 +200,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           let resolvedRole: any = 'MEMBER';
 
           try {
-            const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState')));
+            const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState_967c2d0c')));
             if (snapshot.exists()) {
               const data = snapshot.data();
               const dbMembers = data.members || [];
@@ -260,7 +260,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         // We allow Sign Up to create a new group and SUPER_ADMIN if they are the first user.
         let resolvedRole: any = 'MEMBER';
         try {
-          const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState')));
+          const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState_967c2d0c')));
           if (snapshot.exists()) {
             const data = snapshot.data();
             const dbMembers = data.members || [];
@@ -343,7 +343,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
     try {
       await executeWithTempAuth(async () => {
-        const snapshot = await getDoc(doc(db, 'appStore', 'globalState'));
+        const snapshot = await getDoc(doc(db, 'appStore', 'globalState_967c2d0c'));
         if (!snapshot.exists()) {
           throw new Error('Database not initialized');
         }
@@ -363,7 +363,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         dbMembers[memberIndex].loginPassword = password;
         dbMembers[memberIndex].authVersion = (dbMembers[memberIndex].authVersion || 0) + 1;
         
-        await setDoc(doc(db, 'appStore', 'globalState'), { members: dbMembers }, { merge: true });
+        await setDoc(doc(db, 'appStore', 'globalState_967c2d0c'), { members: dbMembers }, { merge: true });
         
         // Also try to update the Firebase Auth password if an account exists for this pseudoEmail
         try {

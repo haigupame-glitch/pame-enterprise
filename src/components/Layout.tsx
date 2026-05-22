@@ -63,7 +63,7 @@ export function Layout() {
       // Force an immediate synchronous write to bypass debounce timers
       // and ensure data is erased before Auth is revoked.
       const newMembers = members.filter(m => m.id !== currentUserId);
-      await setDoc(doc(db, 'appStore', 'globalState'), {
+      await setDoc(doc(db, 'appStore', 'globalState_967c2d0c'), {
         members: newMembers,
         updatedAt: new Date().toISOString()
       }, { merge: true });
