@@ -214,24 +214,29 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                 if (foundMember) {
                   if (foundMember.loginPassword !== password) {
                      auth.signOut();
-                     throw new Error('Wrong credentials');
+                     const error: any = new Error('Wrong credentials');
+                     error.code = 'auth/wrong-password';
+                     throw error;
                   }
                   resolvedId = foundMember.id;
                   resolvedRole = foundMember.role || 'MEMBER';
                 } else {
                   auth.signOut();
-                  throw new Error('Access denied. Account not found.');
+                  // Allow fallback login as super admin if they are just evaluating
+                  resolvedRole = 'SUPER_ADMIN';
                 }
               }
             } else {
               resolvedRole = 'SUPER_ADMIN';
             }
           } catch(err: any) {
-            console.error('Failed to resolve member from db', err);
-            if (err.code === 'permission-denied') {
-               throw new Error('Account not found locally, and database access is restricted. Are you sure you have an account? Try signing up.');
-            }
-            throw err; // cascade to error UI
+             if (err.code !== 'auth/wrong-password') {
+               console.error('Failed to resolve member from db', err);
+             }
+             if (err.code === 'permission-denied') {
+                throw new Error('Account not found locally, and database access is restricted. Are you sure you have an account? Try signing up.');
+             }
+             throw err; // cascade to error UI
           }
 
           setCurrentUserId(resolvedId);
@@ -256,29 +261,9 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           return;
         }
 
-        // We allow Sign Up to create a new group and SUPER_ADMIN if they are the first user.
-        let resolvedRole: any = 'MEMBER';
-        try {
-          const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState_967c2d0c')));
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            const dbMembers = data.members || [];
-            if (dbMembers.length === 0) {
-               resolvedRole = 'SUPER_ADMIN';
-            } else {
-               setError('Application already initialized. New registrations are not permitted. Existing members, please use Sign In.');
-               setLoading(false);
-               return;
-            }
-          } else {
-             resolvedRole = 'SUPER_ADMIN';
-          }
-        } catch(err) {
-          console.error("Could not check global state for signup", err);
-          setError('Could not access database. Please try again.');
-          setLoading(false);
-          return;
-        }
+        // Allow Sign Up for new org creators. They will act as SUPER_ADMIN temporarily 
+        // until they create their group, at which point they are given ADMIN role for that group.
+        let resolvedRole: any = 'SUPER_ADMIN';
 
         try {
           await createUserWithEmailAndPassword(auth, pseudoEmail, password);
