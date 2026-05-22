@@ -25,7 +25,7 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole, setOrgId, members, currentUserId, orgId, deleteMember, pendingChanges } = useAppContext();
+  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, currentUserRole, setCurrentUserRole, setOrgId, members, currentUserId, orgId, deleteMember, pendingChanges } = useAppContext();
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function Layout() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleDeleteAccount = async () => {
-    if (!currentUserId) return;
+    if (!currentUserId || currentUserRole !== 'SUPER_ADMIN') return;
 
     // Remove locally first
     deleteMember(currentUserId);
@@ -169,13 +169,15 @@ export function Layout() {
               <span className="text-xs text-app-muted uppercase tracking-wider font-bold">Role:</span>
               <RoleDisplay />
             </div>
-            <button 
-              onClick={() => setShowDeleteDialog(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-orange-400 hover:text-orange-300 hover:bg-orange-400/10 rounded-lg transition-colors border border-orange-400/20"
-              title="Delete Account"
-            >
-              Delete Account
-            </button>
+            {currentUserRole === 'SUPER_ADMIN' && (
+              <button 
+                onClick={() => setShowDeleteDialog(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-orange-400 hover:text-orange-300 hover:bg-orange-400/10 rounded-lg transition-colors border border-orange-400/20"
+                title="Delete Account"
+              >
+                Delete Account
+              </button>
+            )}
             <button 
               onClick={handleSignOut}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors border border-red-400/20"
