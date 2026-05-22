@@ -25,7 +25,7 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole, members, currentUserId, deleteMember, pendingChanges } = useAppContext();
+  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, setCurrentUserRole, setOrgId, members, currentUserId, orgId, deleteMember, pendingChanges } = useAppContext();
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
   useEffect(() => {
@@ -49,6 +49,7 @@ export function Layout() {
     }
     setCurrentUserId(null);
     setCurrentUserRole('MEMBER');
+    setOrgId(null);
   };
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -63,10 +64,12 @@ export function Layout() {
       // Force an immediate synchronous write to bypass debounce timers
       // and ensure data is erased before Auth is revoked.
       const newMembers = members.filter(m => m.id !== currentUserId);
-      await setDoc(doc(db, 'appStore', 'globalState_v3_967c2d0c'), {
-        members: newMembers,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      if (orgId) {
+        await setDoc(doc(db, 'appStore', orgId), {
+          members: newMembers,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
     } catch(err: any) {
       const errorString = String(err).toLowerCase();
       if (!errorString.includes('permission-denied') && !errorString.includes('missing or insufficient permissions')) {

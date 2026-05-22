@@ -20,7 +20,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { members, setCurrentUserId, setCurrentUserRole, addMember, addGroup } = useAppContext();
+  const { members, setCurrentUserId, setCurrentUserRole, setOrgId, addMember, addGroup } = useAppContext();
 
   const getPseudoEmail = (phoneNum: string, version?: number) => {
     const numbersOnly = phoneNum.replace(/[^0-9]/g, '');
@@ -166,40 +166,44 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           onLogin();
         } else {
           // Fallback check Firebase (if app storage was cleared but member exists in DB)
-          let dbMembers: any[] = [];
+          let resolvedId: string | null = null;
+          let resolvedRole: any = 'MEMBER';
+          let targetOrgId: string | null = null;
+
+          // 1. Try to fetch from memberDirectory
           try {
-            // Log in anonymously to bypass firestore rule (if enabled) or try to use pseudoEmail
-            try {
-               await signInAnonymously(auth);
-            } catch (anonErr) {
-               console.warn("Anonymous auth failed, trying direct email auth...", anonErr);
-               const pseudoEmail = getPseudoEmail(rawPhone);
-               await signInWithEmailAndPassword(auth, pseudoEmail, password);
-            }
-          } catch (err: any) {
-             if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
-                 console.warn("Bypassing Firebase Auth (disabled)");
-             } else if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
-                 const pseudoEmail = getPseudoEmail(rawPhone);
-                 try {
-                     await createUserWithEmailAndPassword(auth, pseudoEmail, password);
-                 } catch (createErr: any) {
-                     if (createErr.code === 'auth/email-already-in-use') {
-                         console.warn('Background auth sync skipped: Email already in use');
-                     } else {
-                         throw createErr;
-                     }
-                 }
+             // We can read directory if we have ANY auth. executeWithTempAuth handles this.
+             const dirSnap = await executeWithTempAuth(() => getDoc(doc(db, 'memberDirectory_v3', checkPhone)));
+             if (dirSnap.exists()) {
+                targetOrgId = dirSnap.data().orgId;
+             }
+          } catch(e) { console.warn("Failed to read directory", e) }
+
+          // 2. Try to login directly with pseudo email
+          const pseudoEmail = getPseudoEmail(rawPhone);
+          let fbUser;
+          try {
+             const cred = await signInWithEmailAndPassword(auth, pseudoEmail, password);
+             fbUser = cred.user;
+          } catch(err: any) {
+             if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
+                 // It's possible the user was created but isn't an auth user yet.
+                 // We need to just rely on targetOrgId if we have it, else throw error later
              } else {
                  throw err;
              }
           }
-          
-          let resolvedId: string | null = null;
-          let resolvedRole: any = 'MEMBER';
+
+          if (!targetOrgId && fbUser) {
+             targetOrgId = fbUser.uid; // Fallback to themselves being a super admin
+          }
+
+          if (!targetOrgId) {
+             throw new Error("Account not found. Please try signing up.");
+          }
 
           try {
-            const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', 'globalState_v3_967c2d0c')));
+            const snapshot = await executeWithTempAuth(() => getDoc(doc(db, 'appStore', targetOrgId!)));
             if (snapshot.exists()) {
               const data = snapshot.data();
               const dbMembers = data.members || [];
@@ -220,10 +224,18 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                   }
                   resolvedId = foundMember.id;
                   resolvedRole = foundMember.role || 'MEMBER';
+                  
+                  // Lazy create Firebase Auth user for the member
+                  if (!fbUser) {
+                     try {
+                        const cred = await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+                        fbUser = cred.user;
+                     } catch(ext) { console.warn("Lazy Auth Create failed", ext); }
+                  }
                 } else {
                   auth.signOut();
-                  // Allow fallback login as super admin if they are just evaluating
-                  resolvedRole = 'SUPER_ADMIN';
+                  // Require explicit account creation for evaluation now
+                  throw new Error('Access denied. Account not found in directory.');
                 }
               }
             } else {
@@ -239,7 +251,8 @@ export function Login({ onLogin }: { onLogin: () => void }) {
              throw err; // cascade to error UI
           }
 
-          setCurrentUserId(resolvedId);
+          setOrgId(targetOrgId);
+          setCurrentUserId(resolvedId || fbUser?.uid);
           setCurrentUserRole(resolvedRole);
           onLogin();
         }
@@ -264,21 +277,33 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         // Allow Sign Up for new org creators. They will act as SUPER_ADMIN temporarily 
         // until they create their group, at which point they are given ADMIN role for that group.
         let resolvedRole: any = 'SUPER_ADMIN';
+        let fbUser: any;
 
         try {
-          await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+          const cred = await createUserWithEmailAndPassword(auth, pseudoEmail, password);
+          fbUser = cred.user;
         } catch (err: any) {
-           if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
+           if (err.code === 'auth/email-already-in-use') {
+              setError('An account with this phone number already exists.');
+              setLoading(false);
+              return;
+           } else if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
               console.warn("Bypassing Firebase Sign Up (Auth disabled), created locally.");
            } else {
               throw err;
            }
         }
 
-        const newUserId = window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
+        const newUserId = fbUser?.uid || (window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15));
         
         setCurrentUserRole(resolvedRole);
         setCurrentUserId(newUserId);
+        setOrgId(newUserId);
+
+        // Register organization mapping
+        try {
+           await executeWithTempAuth(() => setDoc(doc(db, 'memberDirectory_v3', rawPhone), { orgId: newUserId }));
+        } catch(e) { console.warn("Failed to register directory map", e); }
 
         // Create the member
         addMember({
@@ -327,7 +352,19 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
     try {
       await executeWithTempAuth(async () => {
-        const snapshot = await getDoc(doc(db, 'appStore', 'globalState_v3_967c2d0c'));
+        let resetTargetOrgId: string | null = null;
+        try {
+           const dirSnap = await getDoc(doc(db, 'memberDirectory_v3', rawPhone));
+           if (dirSnap.exists()) {
+              resetTargetOrgId = dirSnap.data().orgId;
+           }
+        } catch(e) {}
+
+        if (!resetTargetOrgId) {
+           throw new Error("Could not find an account matching that phone number in the directory.");
+        }
+
+        const snapshot = await getDoc(doc(db, 'appStore', resetTargetOrgId));
         if (!snapshot.exists()) {
           throw new Error('Database not initialized');
         }
@@ -347,7 +384,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         dbMembers[memberIndex].loginPassword = password;
         dbMembers[memberIndex].authVersion = (dbMembers[memberIndex].authVersion || 0) + 1;
         
-        await setDoc(doc(db, 'appStore', 'globalState_v3_967c2d0c'), { members: dbMembers }, { merge: true });
+        await setDoc(doc(db, 'appStore', resetTargetOrgId), { members: dbMembers }, { merge: true });
         
         // Also try to update the Firebase Auth password if an account exists for this pseudoEmail
         try {

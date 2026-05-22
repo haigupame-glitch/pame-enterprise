@@ -19,6 +19,7 @@ interface AppState {
   activeGroupId: string | null;
   currentUserRole: Role | null;
   currentUserId: string | null;
+  orgId: string | null;
   isOnline: boolean;
   syncStatus: 'synced' | 'syncing' | 'offline';
   pendingChanges: number;
@@ -27,6 +28,7 @@ interface AppState {
 interface AppContextType extends AppState {
   setCurrentUserRole: (role: Role | null) => void;
   setCurrentUserId: (id: string | null) => void;
+  setOrgId: (orgId: string | null) => void;
   setActiveGroup: (id: string | null) => void;
   addGroup: (group: Group) => void;
   addMember: (member: Member) => void;
@@ -66,6 +68,7 @@ const defaultState: AppState = {
   activeGroupId: null,
   currentUserRole: null,
   currentUserId: null,
+  orgId: null,
   isOnline: navigator.onLine,
   syncStatus: navigator.onLine ? 'synced' : 'offline',
   pendingChanges: 0,
@@ -145,28 +148,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Firestore sync: PULL
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !state.orgId) return;
     
     let unsubscribeSnapshot: (() => void) | undefined;
     
     const unsubscribeAuth = auth.onAuthStateChanged(user => {
-      if (user) {
+      if (user && state.orgId) {
         // Subscribe to firestore
-        unsubscribeSnapshot = onSnapshot(doc(db, 'appStore', 'globalState_v3_967c2d0c'), { includeMetadataChanges: true }, (snapshot) => {
+        unsubscribeSnapshot = onSnapshot(doc(db, 'appStore', state.orgId), { includeMetadataChanges: true }, (snapshot) => {
           if (snapshot.exists() && !snapshot.metadata.hasPendingWrites) {
             const data = snapshot.data() as any;
             setState(prev => ({
               ...prev,
-              groups: data.groups || prev.groups,
-              members: data.members || prev.members,
-              collections: data.collections || prev.collections,
-              transactions: data.transactions || prev.transactions,
-              loans: data.loans || prev.loans,
-              loanRepayments: data.loanRepayments || prev.loanRepayments,
-              resolutions: data.resolutions || prev.resolutions,
-              notices: data.notices || prev.notices,
-              activities: data.activities || prev.activities,
-              feedbacks: data.feedbacks || prev.feedbacks,
+              groups: data.groups || [],
+              members: data.members || [],
+              collections: data.collections || [],
+              transactions: data.transactions || [],
+              loans: data.loans || [],
+              loanRepayments: data.loanRepayments || [],
+              resolutions: data.resolutions || [],
+              notices: data.notices || [],
+              activities: data.activities || [],
+              feedbacks: data.feedbacks || [],
             }));
           } else if (!snapshot.exists()) {
             // Document does not exist yet! If we have any local data, trigger a push.
@@ -193,17 +196,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [isLoaded]);
+  }, [isLoaded, state.orgId]);
 
   // Firestore sync: PUSH
   useEffect(() => {
     if (isLoaded && state.isOnline && state.pendingChanges > 0) {
-      if (!auth.currentUser) return; // Only push if authenticated
+      if (!auth.currentUser || !state.orgId) return; // Only push if authenticated
       
       setState(prev => ({ ...prev, syncStatus: 'syncing' }));
       
       const timer = setTimeout(() => {
-        if (!auth.currentUser) {
+        if (!auth.currentUser || !state.orgId) {
            setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
            return;
         }
@@ -221,7 +224,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           updatedAt: new Date().toISOString()
         };
         
-        setDoc(doc(db, 'appStore', 'globalState_v3_967c2d0c'), payload, { merge: true })
+        setDoc(doc(db, 'appStore', state.orgId), payload, { merge: true })
           .then(() => {
             setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
           })
@@ -281,6 +284,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setCurrentUserRole = (role: Role | null) => updateState({ currentUserRole: role });
   const setCurrentUserId = (id: string | null) => updateState({ currentUserId: id });
+  const setOrgId = (id: string | null) => {
+    if (!id) {
+      updateState(defaultState);
+    } else {
+      updateState({ orgId: id });
+    }
+  };
 
   const setActiveGroup = (id: string | null) => updateState({ activeGroupId: id });
   
@@ -311,6 +321,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (state.members.length > 0 && !enforceAdminOrAbove()) return;
     if (state.members.length > 0 && !enforceAdminOrAbove()) member.role = 'MEMBER';
     updateState({ members: [...state.members, member] });
+    
+    // Attempt to register map centrally
+    const phone = (member.contact || member.loginId || member.memberNumber || '').trim();
+    if (phone && state.orgId) {
+      setDoc(doc(db, 'memberDirectory_v3', phone), { orgId: state.orgId }, { merge: true }).catch(console.error);
+    }
   };
   
   const updateMember = (member: Member) => {
@@ -328,6 +344,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     
     updateState({ members: state.members.map(m => m.id === member.id ? member : m) });
+
+    const phone = (member.contact || member.loginId || member.memberNumber || '').trim();
+    if (phone && state.orgId) {
+      setDoc(doc(db, 'memberDirectory_v3', phone), { orgId: state.orgId }, { merge: true }).catch(console.error);
+    }
   };
   
   const deleteMember = (id: string) => {
@@ -443,6 +464,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...state,
       setCurrentUserRole,
       setCurrentUserId,
+      setOrgId,
       setActiveGroup,
       addGroup,
       addMember,
