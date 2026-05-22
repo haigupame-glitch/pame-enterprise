@@ -196,40 +196,40 @@ export function Reports() {
           </div>
         </div>
 
-        <div className={`bento-card border-none bg-white p-0 print:border-none print:shadow-none ${isGeneratingPdf ? 'border-none p-0 shadow-none' : ''}`}>
+        <div className={`bento-card border-none p-0 print:border-none print:shadow-none ${isGeneratingPdf ? 'border-none p-0 shadow-none' : ''}`}>
           <div className="pb-4 pt-4 border-b-2 border-app-border flex justify-between items-center px-4">
             <h3 className="text-xl font-bold text-app-text mb-0">MEMBERSHIP FEES SUMMARY</h3>
             <span className="font-black text-app-primary">For Year : {safeReportYear}</span>
           </div>
           <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
-            <table className="w-full text-sm border-collapse border border-gray-300">
+            <table className="w-full text-sm border-collapse border border-app-border">
               <thead>
-                <tr className="bg-gray-100 text-xs">
-                  <th className="border border-gray-300 p-2 text-center w-12">Sl.No.</th>
-                  <th className="border border-gray-300 p-2 text-left min-w-[120px]">Name</th>
+                <tr className="bg-slate-700/30 text-xs text-app-muted">
+                  <th className="border border-app-border p-2 text-center w-12">Sl.No.</th>
+                  <th className="border border-app-border p-2 text-left min-w-[120px]">Name</th>
                   {monthNames.map(m => (
-                    <th key={m} className="border border-gray-300 p-2 text-center w-16">{m}</th>
+                    <th key={m} className="border border-app-border p-2 text-center w-16">{m}</th>
                   ))}
-                  <th className="border border-gray-300 p-2 text-left min-w-[80px]">Remarks</th>
+                  <th className="border border-app-border p-2 text-left min-w-[80px]">Remarks</th>
                 </tr>
               </thead>
               <tbody>
                 {groupMembers.map((member, index) => {
                   const memberCollections = yearCollections.filter(c => c.memberId === member.id);
                   return (
-                    <tr key={member.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 p-1.5 text-center font-mono">{index + 1}</td>
-                      <td className="border border-gray-300 p-1.5 font-bold whitespace-nowrap">{member.name}</td>
+                    <tr key={member.id} className="hover:bg-slate-700/20">
+                      <td className="border border-app-border p-1.5 text-center font-mono">{index + 1}</td>
+                      <td className="border border-app-border p-1.5 font-bold whitespace-nowrap">{member.name}</td>
                       {Array.from({ length: 12 }).map((_, monthIndex) => {
                         const monthCol = memberCollections.filter(c => Number(c.month) === monthIndex);
                         const totalForMonth = monthCol.reduce((sum, c) => sum + c.amount, 0);
                         return (
-                          <td key={monthIndex} className="border border-gray-300 p-1.5 text-center font-mono text-xs">
+                          <td key={monthIndex} className="border border-app-border p-1.5 text-center font-mono text-xs">
                             {totalForMonth > 0 ? totalForMonth : ''}
                           </td>
                         );
                       })}
-                      <td className="border border-gray-300 p-1.5 text-xs text-app-muted"></td>
+                      <td className="border border-app-border p-1.5 text-xs text-app-muted"></td>
                     </tr>
                   );
                 })}
@@ -303,7 +303,7 @@ export function Reports() {
             </button>
           </div>
           
-          <div className={`bento-card bg-white print:border-none print:shadow-none ${isGeneratingPdf ? 'border-none shadow-none' : ''}`}>
+          <div className={`bento-card print:border-none print:shadow-none ${isGeneratingPdf ? 'border-none shadow-none' : ''}`}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pt-2 pb-4 border-b-2 border-app-border print:border-b">
               <div>
                 <div className="text-xs font-bold text-app-muted uppercase">Name</div>
@@ -324,60 +324,60 @@ export function Reports() {
             </div>
 
             <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
-              <table className="w-full text-sm border-collapse border border-gray-300">
+              <table className="w-full text-sm border-collapse border border-app-border">
                 <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-gray-300 p-2" colSpan={3}></th>
-                    <th className="border border-gray-300 p-2 text-center" colSpan={3}>To be Repaid</th>
-                    <th className="border border-gray-300 p-2" colSpan={2}></th>
-                    <th className="border border-gray-300 p-2 text-center" colSpan={2}>Repayment Dues</th>
-                    <th className="border border-gray-300 p-2 text-center" colSpan={3}>Repayment</th>
-                    <th className="border border-gray-300 p-2 text-center" colSpan={2}>Balance Amount of</th>
-                    <th className="border border-gray-300 p-2"></th>
+                  <tr className="bg-slate-700/30">
+                    <th className="border border-app-border p-2" colSpan={3}></th>
+                    <th className="border border-app-border p-2 text-center" colSpan={3}>To be Repaid</th>
+                    <th className="border border-app-border p-2" colSpan={2}></th>
+                    <th className="border border-app-border p-2 text-center" colSpan={2}>Repayment Dues</th>
+                    <th className="border border-app-border p-2 text-center" colSpan={3}>Repayment</th>
+                    <th className="border border-app-border p-2 text-center" colSpan={2}>Balance Amount of</th>
+                    <th className="border border-app-border p-2"></th>
                   </tr>
-                  <tr className="bg-gray-50 text-xs">
-                    <th className="border border-gray-300 p-1">Sl No</th>
-                    <th className="border border-gray-300 p-1">Date of Record</th>
-                    <th className="border border-gray-300 p-1">Month to Month</th>
-                    <th className="border border-gray-300 p-1">Principal</th>
-                    <th className="border border-gray-300 p-1">Interest</th>
-                    <th className="border border-gray-300 p-1">Total</th>
-                    <th className="border border-gray-300 p-1">Months</th>
-                    <th className="border border-gray-300 p-1">Payment Date</th>
-                    <th className="border border-gray-300 p-1">Principal</th>
-                    <th className="border border-gray-300 p-1">Interest</th>
-                    <th className="border border-gray-300 p-1">Principal</th>
-                    <th className="border border-gray-300 p-1">Interest</th>
-                    <th className="border border-gray-300 p-1">Total</th>
-                    <th className="border border-gray-300 p-1">Principal</th>
-                    <th className="border border-gray-300 p-1">Interest</th>
-                    <th className="border border-gray-300 p-1">Remarks</th>
+                  <tr className="bg-slate-700/50 text-xs">
+                    <th className="border border-app-border p-1">Sl No</th>
+                    <th className="border border-app-border p-1">Date of Record</th>
+                    <th className="border border-app-border p-1">Month to Month</th>
+                    <th className="border border-app-border p-1">Principal</th>
+                    <th className="border border-app-border p-1">Interest</th>
+                    <th className="border border-app-border p-1">Total</th>
+                    <th className="border border-app-border p-1">Months</th>
+                    <th className="border border-app-border p-1">Payment Date</th>
+                    <th className="border border-app-border p-1">Principal</th>
+                    <th className="border border-app-border p-1">Interest</th>
+                    <th className="border border-app-border p-1">Principal</th>
+                    <th className="border border-app-border p-1">Interest</th>
+                    <th className="border border-app-border p-1">Total</th>
+                    <th className="border border-app-border p-1">Principal</th>
+                    <th className="border border-app-border p-1">Interest</th>
+                    <th className="border border-app-border p-1">Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ledgerRows.map((r) => (
-                    <tr key={r.slNo} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 p-1 text-center">{r.slNo}</td>
-                      <td className="border border-gray-300 p-1 whitespace-nowrap">{format(r.dateOfRecord, 'dd/MM/yyyy')}</td>
-                      <td className="border border-gray-300 p-1 whitespace-nowrap">{r.monthToMonth}</td>
-                      <td className="border border-gray-300 p-1 text-right">{formatCurrency(r.toBeRepaidPrincipal)}</td>
-                      <td className="border border-gray-300 p-1 text-right">{formatCurrency(r.toBeRepaidInterest)}</td>
-                      <td className="border border-gray-300 p-1 text-right">{formatCurrency(r.totalToBeRepaid)}</td>
-                      <td className="border border-gray-300 p-1 text-center">{r.months}</td>
-                      <td className="border border-gray-300 p-1 whitespace-nowrap">{format(r.paymentDate, 'dd/MM/yyyy')}</td>
-                      <td className="border border-gray-300 p-1 text-right">{formatCurrency(r.duesPrincipal)}</td>
-                      <td className="border border-gray-300 p-1 text-right">{formatCurrency(r.duesInterest)}</td>
-                      <td className="border border-gray-300 p-1 text-right">{formatCurrency(r.repPrincipal)}</td>
-                      <td className="border border-gray-300 p-1 text-right">{formatCurrency(r.repInterest)}</td>
-                      <td className="border border-gray-300 p-1 text-right bg-green-50">{formatCurrency(r.repTotal)}</td>
-                      <td className="border border-gray-300 p-1 text-right font-bold text-red-600">{formatCurrency(r.balancePrincipal)}</td>
-                      <td className="border border-gray-300 p-1 text-right text-red-600">{formatCurrency(r.balanceInterest)}</td>
-                      <td className="border border-gray-300 p-1 text-xs">{r.remarks}</td>
+                    <tr key={r.slNo} className="hover:bg-slate-700/20">
+                      <td className="border border-app-border p-1 text-center">{r.slNo}</td>
+                      <td className="border border-app-border p-1 whitespace-nowrap">{format(r.dateOfRecord, 'dd/MM/yyyy')}</td>
+                      <td className="border border-app-border p-1 whitespace-nowrap">{r.monthToMonth}</td>
+                      <td className="border border-app-border p-1 text-right">{formatCurrency(r.toBeRepaidPrincipal)}</td>
+                      <td className="border border-app-border p-1 text-right">{formatCurrency(r.toBeRepaidInterest)}</td>
+                      <td className="border border-app-border p-1 text-right">{formatCurrency(r.totalToBeRepaid)}</td>
+                      <td className="border border-app-border p-1 text-center">{r.months}</td>
+                      <td className="border border-app-border p-1 whitespace-nowrap">{format(r.paymentDate, 'dd/MM/yyyy')}</td>
+                      <td className="border border-app-border p-1 text-right">{formatCurrency(r.duesPrincipal)}</td>
+                      <td className="border border-app-border p-1 text-right">{formatCurrency(r.duesInterest)}</td>
+                      <td className="border border-app-border p-1 text-right">{formatCurrency(r.repPrincipal)}</td>
+                      <td className="border border-app-border p-1 text-right">{formatCurrency(r.repInterest)}</td>
+                      <td className="border border-app-border p-1 text-right bg-emerald-500/10 text-emerald-500">{formatCurrency(r.repTotal)}</td>
+                      <td className="border border-app-border p-1 text-right font-bold text-red-500">{formatCurrency(r.balancePrincipal)}</td>
+                      <td className="border border-app-border p-1 text-right text-red-500">{formatCurrency(r.balanceInterest)}</td>
+                      <td className="border border-app-border p-1 text-xs">{r.remarks}</td>
                     </tr>
                   ))}
                   {ledgerRows.length === 0 && (
                     <tr>
-                      <td colSpan={16} className="border border-gray-300 p-4 text-center font-bold text-gray-500">No repayment history yet.</td>
+                      <td colSpan={16} className="border border-app-border p-4 text-center font-bold text-app-muted">No repayment history yet.</td>
                     </tr>
                   )}
                 </tbody>
