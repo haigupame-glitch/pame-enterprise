@@ -9,6 +9,7 @@ declare global {
 export interface Group {
   id: string;
   name: string;
+  motto?: string;
   switchPassword?: string;
   createdDate: string;
   constitution: string;

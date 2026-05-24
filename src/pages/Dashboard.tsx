@@ -53,6 +53,9 @@ export function Dashboard() {
             )}
             <div className="text-center pb-1 sm:pb-2">
               <h1 className="text-3xl font-bold mb-1 tracking-tight text-white drop-shadow-md">{activeGroup.name}</h1>
+              {activeGroup.motto && (
+                <p className="text-sm font-medium tracking-widest text-[#facc15] uppercase drop-shadow-sm mt-2">{activeGroup.motto}</p>
+              )}
             </div>
           </div>
         </div>

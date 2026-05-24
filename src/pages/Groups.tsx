@@ -24,6 +24,7 @@ export function Groups() {
   const [constitutionText, setConstitutionText] = useState('');
   const [contactText, setContactText] = useState('');
   const [emailText, setEmailText] = useState('');
+  const [mottoText, setMottoText] = useState('');
   const [bankName, setBankName] = useState('');
   const [accountName, setAccountName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -40,6 +41,7 @@ export function Groups() {
       setConstitutionText(activeGroup.constitution || '');
       setContactText(activeGroup.contact || '');
       setEmailText(activeGroup.email || '');
+      setMottoText(activeGroup.motto || '');
       setBankName(activeGroup.bankName || '');
       setAccountName(activeGroup.accountName || '');
       setAccountNumber(activeGroup.accountNumber || '');
@@ -78,6 +80,7 @@ export function Groups() {
       updateGroup(activeGroupId, { 
         contact: contactText, 
         email: emailText,
+        motto: mottoText,
         bankName,
         accountName,
         accountNumber,
@@ -310,7 +313,7 @@ export function Groups() {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 pb-6 border-b border-app-border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Phone Number</label>
                   <input
@@ -333,6 +336,17 @@ export function Groups() {
                     disabled={!canEditGroupDetails}
                   />
                 </div>
+              </div>
+              <div className="mb-6 pb-6 border-b border-app-border">
+                  <label className="text-xs text-app-muted uppercase tracking-wider block mb-1">Group Motto (Optional)</label>
+                  <input
+                    type="text"
+                    value={mottoText}
+                    onChange={(e) => setMottoText(e.target.value)}
+                    className="bento-input w-full py-1.5 disabled:opacity-50"
+                    placeholder="e.g. Plant for Tomorrow"
+                    disabled={!canEditGroupDetails}
+                  />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
