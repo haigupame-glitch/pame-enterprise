@@ -119,7 +119,9 @@ export interface Feedback {
   userId: string;
   groupId: string; // 'GLOBAL' if no group selected
   date: string;
-  type: 'Bug' | 'Feature Request' | 'Other';
+  type: 'Bug' | 'Feature Request' | 'App Review' | 'Other';
   text: string;
   status: 'Open' | 'Closed';
+  reply?: string;
+  rating?: number;
 }

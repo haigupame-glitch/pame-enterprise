@@ -428,18 +428,19 @@ export function Groups() {
                       </div>
                     )}
                  </div>
-                 <div className="flex flex-col items-center justify-center p-4 bg-app-card rounded-xl border-2 border-dashed border-app-border h-full min-h-[200px]">
+                 <div className="flex flex-col items-center justify-center p-4 bg-app-card rounded-xl border-2 border-dashed border-app-border h-full min-h-[320px]">
                     {upiId ? (
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="bg-white p-2 rounded-lg">
+                      <div className="flex flex-col items-center gap-4 w-full max-w-[280px] mx-auto">
+                        <div className="bg-white p-4 rounded-xl w-full aspect-square flex items-center justify-center shadow-sm">
                           <QRCode 
                             value={`upi://pay?pa=${upiId}&pn=${accountName || activeGroup.name}`} 
-                            size={160} 
+                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                            viewBox={`0 0 256 256`}
                             fgColor="#030712"
                             bgColor="#ffffff"
                           />
                         </div>
-                        <div className="text-xs font-semibold text-app-text text-center">Scan to Pay</div>
+                        <div className="text-sm font-bold text-app-text text-center mt-1">Scan to Pay</div>
                       </div>
                     ) : (
                       <div className="text-center text-app-muted text-xs">

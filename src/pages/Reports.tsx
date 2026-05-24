@@ -412,21 +412,25 @@ export function Reports() {
     return (
       <div className="space-y-6 print:space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:grid-cols-4">
-          <div className="bento-card">
-            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-1">Total Issued</div>
-            <div className="text-xl font-black font-mono text-app-text">{formatCurrency(totalPrincipal)}</div>
+          <div className="bento-card relative overflow-hidden group border-slate-700/30 bg-slate-800/10">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-slate-700/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 bg-opacity-10 print:hidden"></div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Total Issued</div>
+            <div className="text-xl md:text-2xl font-black font-mono text-app-text relative z-10 truncate" title={formatCurrency(totalPrincipal)}>{formatCurrency(totalPrincipal)}</div>
           </div>
-          <div className="bento-card border-b-4 border-app-accent">
-            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-1">Total Repaid</div>
-            <div className="text-xl font-black font-mono text-app-accent">{formatCurrency(totalRepaid)}</div>
+          <div className="bento-card relative overflow-hidden group border-app-accent/30 bg-app-accent/5">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-app-accent/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 bg-opacity-10 print:hidden"></div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Total Repaid</div>
+            <div className="text-xl md:text-2xl font-black font-mono text-app-accent relative z-10 truncate" title={formatCurrency(totalRepaid)}>{formatCurrency(totalRepaid)}</div>
           </div>
-          <div className="bento-card border-b-4 border-red-500">
-            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-1">Outstanding</div>
-            <div className="text-xl font-black font-mono text-red-500">{formatCurrency(totalPrincipal - totalRepaid)}</div>
+          <div className="bento-card relative overflow-hidden group border-red-500/30 bg-red-500/5">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-red-500/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 bg-opacity-10 print:hidden"></div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Outstanding</div>
+            <div className="text-xl md:text-2xl font-black font-mono text-red-500 relative z-10 truncate" title={formatCurrency(totalPrincipal - totalRepaid)}>{formatCurrency(totalPrincipal - totalRepaid)}</div>
           </div>
-          <div className="bento-card !bg-app-primary text-white">
-            <div className="text-xs font-bold opacity-80 uppercase tracking-wider mb-1">Interest Earned</div>
-            <div className="text-xl font-black font-mono text-white">{formatCurrency(totalInterest)}</div>
+          <div className="bento-card relative overflow-hidden group border-app-primary/30 bg-app-primary/10">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-app-primary/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 print:hidden"></div>
+            <div className="text-xs font-bold text-app-primary uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Interest Earned</div>
+            <div className="text-xl md:text-2xl font-black font-mono text-app-primary relative z-10 truncate" title={formatCurrency(totalInterest)}>{formatCurrency(totalInterest)}</div>
           </div>
         </div>
 
@@ -492,17 +496,20 @@ export function Reports() {
     return (
       <div className="space-y-6 print:space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
-          <div className="bento-card border-l-4 border-app-accent">
-            <div className="text-sm font-bold text-app-muted uppercase tracking-wider mb-2">Total Income</div>
-            <div className="text-2xl font-black font-mono text-app-accent">{formatCurrency(totalIncome)}</div>
+          <div className="bento-card relative overflow-hidden group border-app-accent/30 bg-app-accent/5">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-app-accent/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 bg-opacity-10 print:hidden"></div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Total Income</div>
+            <div className="text-xl md:text-2xl font-black font-mono text-app-accent relative z-10 truncate" title={formatCurrency(totalIncome)}>{formatCurrency(totalIncome)}</div>
           </div>
-          <div className="bento-card border-l-4 border-red-500">
-            <div className="text-sm font-bold text-app-muted uppercase tracking-wider mb-2">Total Expense</div>
-            <div className="text-2xl font-black font-mono text-red-500">{formatCurrency(totalExpense)}</div>
+          <div className="bento-card relative overflow-hidden group border-red-500/30 bg-red-500/5">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-red-500/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 bg-opacity-10 print:hidden"></div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Total Expense</div>
+            <div className="text-xl md:text-2xl font-black font-mono text-red-500 relative z-10 truncate" title={formatCurrency(totalExpense)}>{formatCurrency(totalExpense)}</div>
           </div>
-          <div className="bento-card !bg-app-primary text-white">
-            <div className="text-sm font-bold opacity-80 uppercase tracking-wider mb-2">Current Balance</div>
-            <div className="text-2xl font-black font-mono">{formatCurrency(currentBalance)}</div>
+          <div className="bento-card relative overflow-hidden group border-app-primary/30 bg-app-primary/10">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-app-primary/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 print:hidden"></div>
+            <div className="text-xs font-bold text-app-primary uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Current Balance</div>
+            <div className="text-xl md:text-2xl font-black font-mono text-app-primary relative z-10 truncate" title={formatCurrency(currentBalance)}>{formatCurrency(currentBalance)}</div>
           </div>
         </div>
 

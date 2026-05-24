@@ -45,9 +45,17 @@ interface AppContextType extends AppState {
   updateRepayment: (repayment: LoanRepayment) => void;
   deleteRepayment: (id: string) => void;
   addResolution: (resolution: Resolution) => void;
+  updateResolution: (resolution: Resolution) => void;
+  deleteResolution: (id: string) => void;
   addNotice: (notice: Notice) => void;
+  updateNotice: (notice: Notice) => void;
+  deleteNotice: (id: string) => void;
   addActivity: (activity: Activity) => void;
+  updateActivity: (activity: Activity) => void;
+  deleteActivity: (id: string) => void;
   addFeedback: (feedback: Feedback) => void;
+  updateFeedback: (feedback: Feedback) => void;
+  deleteFeedback: (id: string) => void;
   updateGroup: (groupId: string, data: Partial<Group>) => void;
   deleteGroup: (groupId: string) => void;
   updateConstitution: (groupId: string, constitution: string) => void;
@@ -422,17 +430,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!enforceTreasurerOrAbove()) return;
     updateState({ resolutions: [...state.resolutions, res] });
   };
+  const updateResolution = (res: Resolution) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ resolutions: state.resolutions.map(r => r.id === res.id ? res : r) });
+  };
+  const deleteResolution = (id: string) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ resolutions: state.resolutions.filter(r => r.id !== id) });
+  };
+  
   const addNotice = (notice: Notice) => {
     if (!enforceTreasurerOrAbove()) return;
     updateState({ notices: [...state.notices, notice] });
   };
+  const updateNotice = (notice: Notice) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ notices: state.notices.map(n => n.id === notice.id ? notice : n) });
+  };
+  const deleteNotice = (id: string) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ notices: state.notices.filter(n => n.id !== id) });
+  };
+  
   const addActivity = (activity: Activity) => {
     if (!enforceTreasurerOrAbove()) return;
     updateState({ activities: [...state.activities, activity] });
   };
+  const updateActivity = (activity: Activity) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ activities: state.activities.map(a => a.id === activity.id ? activity : a) });
+  };
+  const deleteActivity = (id: string) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ activities: state.activities.filter(a => a.id !== id) });
+  };
   
   const addFeedback = (feedback: Feedback) => {
     updateState({ feedbacks: [...state.feedbacks, feedback] });
+  };
+  const updateFeedback = (feedback: Feedback) => {
+    updateState({ feedbacks: state.feedbacks.map(f => f.id === feedback.id ? feedback : f) });
+  };
+  const deleteFeedback = (id: string) => {
+    if (!enforceSuperAdmin() && !enforceAdminOrAbove()) return;
+    updateState({ feedbacks: state.feedbacks.filter(f => f.id !== id) });
   };
   
   const updateConstitution = (groupId: string, constitution: string) => {
@@ -490,9 +531,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateRepayment,
       deleteRepayment,
       addResolution,
+      updateResolution,
+      deleteResolution,
       addNotice,
+      updateNotice,
+      deleteNotice,
       addActivity,
+      updateActivity,
+      deleteActivity,
       addFeedback,
+      updateFeedback,
+      deleteFeedback,
       updateGroup,
       deleteGroup,
       updateConstitution,
