@@ -168,9 +168,28 @@ export function Reports() {
         const amt = tx.type === 'Income' ? `+${formatCurrency(tx.payIn)}` : `-${formatCurrency(tx.payOut)}`;
         reportText += `${index + 1}. ${dt} - ${tx.particulars} (${amt})\n`;
       });
+    } else if (activeTab === 'balance-sheet') {
+      const currentBalance = groupTransactions.length > 0 ? groupTransactions[groupTransactions.length - 1].runningBalance : 0;
+      
+      let totalPrincipal = 0;
+      let totalRepaid = 0;
+      groupLoans.forEach(loan => {
+        const reps = groupRepayments.filter(r => r.loanId === loan.id);
+        const repaidPrincipal = reps.reduce((sum, r) => sum + r.principalAmount, 0);
+        totalPrincipal += loan.principal;
+        totalRepaid += repaidPrincipal;
+      });
+      const outstandingLoans = totalPrincipal - totalRepaid;
+      const totalAssets = currentBalance + outstandingLoans;
+      const totalMembersSavings = groupCollections.reduce((sum, c) => sum + c.amount, 0);
+      const retainedEarnings = totalAssets - totalMembersSavings;
+
+      reportText = `*BALANCE SHEET REPORT*\nGroup: ${groupName}\nAs of: ${format(new Date(), 'dd MMM yyyy')}\n\n`;
+      reportText += `*LIABILITIES & CAPITAL*\nMembers Savings: ${formatCurrency(totalMembersSavings)}\nReserves/Surplus: ${formatCurrency(retainedEarnings)}\nTotal Liabilities: ${formatCurrency(totalAssets)}\n\n`;
+      reportText += `*ASSETS*\nCash/Bank: ${formatCurrency(currentBalance)}\nOutstanding Loans: ${formatCurrency(outstandingLoans)}\nTotal Assets: ${formatCurrency(totalAssets)}`;
     }
 
-    reportText += `\n_Generated on ${format(new Date(), 'dd MMM yyyy')}_`;
+    reportText += `\n\n_Generated on ${format(new Date(), 'dd MMM yyyy')}_`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
   };
@@ -563,6 +582,89 @@ export function Reports() {
     );
   };
 
+  const renderBalanceSheet = () => {
+    const currentBalance = groupTransactions.length > 0 ? groupTransactions[groupTransactions.length - 1].runningBalance : 0;
+    
+    let totalPrincipal = 0;
+    let totalRepaid = 0;
+    groupLoans.forEach(loan => {
+      const reps = groupRepayments.filter(r => r.loanId === loan.id);
+      const repaidPrincipal = reps.reduce((sum, r) => sum + r.principalAmount, 0);
+      totalPrincipal += loan.principal;
+      totalRepaid += repaidPrincipal;
+    });
+    const outstandingLoans = totalPrincipal - totalRepaid;
+
+    const totalAssets = currentBalance + outstandingLoans;
+    const totalMembersSavings = groupCollections.reduce((sum, c) => sum + c.amount, 0);
+    const retainedEarnings = totalAssets - totalMembersSavings;
+
+    return (
+      <div className="space-y-6 print:space-y-4">
+        <div className={`bento-card border-none p-0 print:border-none print:shadow-none ${isGeneratingPdf ? 'border-none p-0 shadow-none' : ''}`}>
+          <div className="pb-4 pt-4 border-b-2 border-app-border flex justify-between items-center px-4">
+            <h3 className="text-xl font-bold text-app-text mb-0 uppercase">BALANCE SHEET</h3>
+            <span className="font-black text-app-muted">As of {format(new Date(), 'dd MMM yyyy')}</span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border border-app-border mt-4 bg-app-card">
+            <div className="border-b md:border-b-0 md:border-r border-app-border">
+              <div className="bg-slate-700/30 p-3 border-b border-app-border font-bold text-app-text text-center uppercase tracking-wider">
+                Liabilities & Capital
+              </div>
+              <div className="p-0">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="border-b border-app-border/30 hover:bg-slate-700/10 transition-colors">
+                      <td className="p-3 font-semibold">Members' Savings (Collections)</td>
+                      <td className="p-3 text-right font-mono font-bold text-app-text">{formatCurrency(totalMembersSavings)}</td>
+                    </tr>
+                    <tr className="border-b border-app-border/30 hover:bg-slate-700/10 transition-colors">
+                      <td className="p-3 font-semibold">Reserves & Surplus / Retained Earnings</td>
+                      <td className="p-3 text-right font-mono font-bold text-app-text">{formatCurrency(retainedEarnings)}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-700/20 text-app-text">
+                      <td className="p-3 font-black text-lg uppercase">Total Liabilities</td>
+                      <td className="p-3 text-right font-mono font-black text-lg text-app-primary">{formatCurrency(totalAssets)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <div className="bg-slate-700/30 p-3 border-b border-app-border font-bold text-app-text text-center uppercase tracking-wider">
+                Assets
+              </div>
+              <div className="p-0">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="border-b border-app-border/30 hover:bg-slate-700/10 transition-colors">
+                      <td className="p-3 font-semibold">Cash & Bank Balance</td>
+                      <td className="p-3 text-right font-mono font-bold text-app-text">{formatCurrency(currentBalance)}</td>
+                    </tr>
+                    <tr className="border-b border-app-border/30 hover:bg-slate-700/10 transition-colors">
+                      <td className="p-3 font-semibold">Outstanding Loans</td>
+                      <td className="p-3 text-right font-mono font-bold text-app-text">{formatCurrency(outstandingLoans)}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-700/20 text-app-text">
+                      <td className="p-3 font-black text-lg uppercase">Total Assets</td>
+                      <td className="p-3 text-right font-mono font-black text-lg text-app-primary">{formatCurrency(totalAssets)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden ${isGeneratingPdf ? 'hidden' : ''}`}>
@@ -581,9 +683,15 @@ export function Reports() {
           </button>
           <button 
             onClick={() => { setActiveTab('transactions'); setSelectedLoanId(null); }}
-            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold uppercase transition-colors ${activeTab === 'transactions' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold uppercase transition-colors ${activeTab === 'transactions' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
           >
             Transactions
+          </button>
+          <button 
+            onClick={() => { setActiveTab('balance-sheet'); setSelectedLoanId(null); }}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold uppercase transition-colors ${activeTab === 'balance-sheet' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
+          >
+            Balance Sheet
           </button>
         </div>
         
@@ -616,6 +724,7 @@ export function Reports() {
         {activeTab === 'members' && renderMembersReport()}
         {activeTab === 'loans' && renderLoansReport()}
         {activeTab === 'transactions' && renderTransactionsReport()}
+        {activeTab === 'balance-sheet' && renderBalanceSheet()}
       </div>
     </div>
   );
