@@ -1,16 +1,43 @@
 import { useAppContext } from '../store/AppContext';
-import { Users, Building, Wallet, ScrollText } from 'lucide-react';
+import { Users, Building, Wallet, ScrollText, Download } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
 export function Dashboard() {
-  const { groups, members, transactions, activeGroupId, currentUserRole } = useAppContext();
+  const { 
+    groups, members, transactions, activeGroupId, currentUserRole,
+    collections, loans, loanRepayments, resolutions, notices, activities, feedbacks
+  } = useAppContext();
   
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
   const groupTransactions = transactions.filter(t => t.groupId === activeGroupId);
   
   const latestBalance = groupTransactions.length > 0 ? groupTransactions[groupTransactions.length - 1].runningBalance : 0;
+
+  const handleDownloadBackup = () => {
+    const backupData = {
+      groups,
+      members,
+      collections,
+      transactions,
+      loans,
+      loanRepayments,
+      resolutions,
+      notices,
+      activities,
+      feedbacks,
+      exportDate: new Date().toISOString()
+    };
+    
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `shg_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
 
   return (
     <div className="space-y-6">
@@ -101,9 +128,15 @@ export function Dashboard() {
                   </div>
                   <div className="stat-huge z-10 relative">{groupTransactions.length}</div>
                </div>
-               <div className="mt-4 md:mt-0 flex gap-4">
+               <div className="mt-4 md:mt-0 flex flex-wrap gap-2 sm:gap-4">
                  <Link to="/transactions" className="bento-btn">View Transactions</Link>
                  <Link to="/reports" className="bento-btn bento-btn-primary">Generate Report</Link>
+                 {(currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') && (
+                   <button onClick={handleDownloadBackup} className="bento-btn bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-2">
+                     <Download className="w-4 h-4" />
+                     Backup Data
+                   </button>
+                 )}
                </div>
             </div>
           </>

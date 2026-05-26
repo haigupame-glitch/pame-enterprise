@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
-import { Printer, Share2, FileDown } from 'lucide-react';
+import { Printer, Share2, FileDown, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 
@@ -10,7 +10,8 @@ type ReportTab = 'members' | 'loans' | 'transactions';
 
 export function Reports() {
   const { 
-    groups, members, collections, loans, loanRepayments, transactions, activeGroupId 
+    groups, members, collections, loans, loanRepayments, transactions, activeGroupId,
+    currentUserRole, resolutions, notices, activities, feedbacks
   } = useAppContext();
 
   const [activeTab, setActiveTab] = useState<ReportTab>('members');
@@ -192,6 +193,30 @@ export function Reports() {
     reportText += `\n\n_Generated on ${format(new Date(), 'dd MMM yyyy')}_`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(reportText)}`, '_blank');
+  };
+
+  const handleDownloadBackup = () => {
+    const backupData = {
+      groups,
+      members,
+      collections,
+      transactions,
+      loans,
+      loanRepayments,
+      resolutions,
+      notices,
+      activities,
+      feedbacks,
+      exportDate: new Date().toISOString()
+    };
+    
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `shg_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
   };
 
   const renderMembersReport = () => {
@@ -695,7 +720,7 @@ export function Reports() {
           </button>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="bento-btn flex items-center gap-2">
             <FileDown className="w-4 h-4" />
             <span className="hidden sm:inline">{isGeneratingPdf ? 'Generating...' : 'Save PDF'}</span>
@@ -708,6 +733,12 @@ export function Reports() {
             <Printer className="w-4 h-4" />
             <span className="hidden sm:inline">Print Report</span>
           </button>
+          {(currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') && (
+            <button onClick={handleDownloadBackup} className="bento-btn bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Backup Data</span>
+            </button>
+          )}
         </div>
       </div>
 
