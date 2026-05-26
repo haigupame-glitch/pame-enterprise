@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { Users, Building, Wallet, ScrollText, Download } from 'lucide-react';
+import { Users, Building, Wallet, ScrollText, Download, CheckCircle2 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -8,6 +9,8 @@ export function Dashboard() {
     groups, members, transactions, activeGroupId, currentUserRole,
     collections, loans, loanRepayments, resolutions, notices, activities, feedbacks
   } = useAppContext();
+  
+  const [showToast, setShowToast] = useState(false);
   
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
@@ -37,10 +40,19 @@ export function Dashboard() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+    
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
 
   return (
     <div className="space-y-6">
+      {showToast && (
+        <div className="fixed bottom-4 right-4 bg-emerald-500 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <CheckCircle2 className="w-5 h-5" />
+          <span className="font-medium">Backup downloaded successfully</span>
+        </div>
+      )}
       {!activeGroup && (
         <div className="bento-card border-app-primary/30 bg-app-primary/10">
           <div className="flex">

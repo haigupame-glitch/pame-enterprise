@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
-import { Printer, Share2, FileDown, Download } from 'lucide-react';
+import { Printer, Share2, FileDown, Download, CheckCircle2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 
@@ -17,6 +17,7 @@ export function Reports() {
   const [activeTab, setActiveTab] = useState<ReportTab>('members');
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const [reportYear, setReportYear] = useState<number>(new Date().getFullYear());
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -217,6 +218,9 @@ export function Reports() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+    
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
 
   const renderMembersReport = () => {
@@ -692,6 +696,12 @@ export function Reports() {
 
   return (
     <div className="space-y-6">
+      {showToast && (
+        <div className="fixed bottom-4 right-4 bg-emerald-500 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <CheckCircle2 className="w-5 h-5" />
+          <span className="font-medium">Backup downloaded successfully</span>
+        </div>
+      )}
       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden ${isGeneratingPdf ? 'hidden' : ''}`}>
         <div className="flex bg-app-card p-1 rounded-xl border-2 border-app-border w-full sm:w-auto">
           <button 
