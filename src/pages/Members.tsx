@@ -33,6 +33,14 @@ export function Members() {
     return false;
   };
 
+  const isActuallyOnline = (member: any) => {
+    if (!member.isOnline) return false;
+    if (!member.lastActive) return true;
+    // Consider online if active within last 5 minutes
+    const inactiveTime = new Date().getTime() - new Date(member.lastActive).getTime();
+    return inactiveTime < 5 * 60 * 1000;
+  };
+
   const canDeleteMember = currentUserRole === 'SUPER_ADMIN';
 
   const exportToCSV = () => {
@@ -276,7 +284,7 @@ export function Members() {
                     <>
                       <td className="font-mono font-medium text-emerald-400">{member.memberNumber || '-'}</td>
                       <td className="font-bold">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {member.name}
                           <span className={cn(
                             "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
@@ -288,6 +296,15 @@ export function Members() {
                           )}>
                             {(member.role || 'MEMBER').replace('_', ' ')}
                           </span>
+                          {isActuallyOnline(member) && (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') && (
+                            <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 text-[9px] uppercase tracking-wider font-bold">
+                              <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                              </span>
+                              Online
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="font-mono text-sm">{member.contact || '-'}</td>

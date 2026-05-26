@@ -25,7 +25,7 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, currentUserRole, setCurrentUserRole, setOrgId, members, currentUserId, orgId, deleteMember, pendingChanges } = useAppContext();
+  const { groups, activeGroupId, setActiveGroup, setCurrentUserId, currentUserRole, setCurrentUserRole, setOrgId, members, currentUserId, orgId, deleteMember, pendingChanges, updateMember } = useAppContext();
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
   useEffect(() => {
@@ -41,7 +41,36 @@ export function Layout() {
     }
   }, [currentUserId, activeGroupId, members, groups, setActiveGroup]);
 
+  // Track online/lastActive periodically when user is logged in
+  useEffect(() => {
+    if (!currentUserId) return;
+    
+    const updateOnlineStatus = () => {
+       const me = members.find(m => m.id === currentUserId);
+       if (me) {
+          updateMember({ ...me, isOnline: true, lastActive: new Date().toISOString() });
+       }
+    };
+    
+    // Initial status set on mount or login
+    updateOnlineStatus();
+    
+    // Update every minute to keep lastActive fresh
+    const intervalId = setInterval(updateOnlineStatus, 60000);
+    return () => clearInterval(intervalId);
+    
+    // Note: We don't use 'members' in the dependency array to avoid setting status on every unrelated member update,
+    // though that means if member gets updated externally we might push the old fields again. 
+    // It's mostly safe locally because state changes are synchronously flushed to 'members' reference.
+  }, [currentUserId]); // Only run on login/logout
+
   const handleSignOut = async () => {
+    if (currentUserId) {
+       const me = members.find(m => m.id === currentUserId);
+       if (me) {
+          updateMember({ ...me, isOnline: false, lastActive: new Date().toISOString() });
+       }
+    }
     try {
       await auth.signOut();
     } catch(err) {

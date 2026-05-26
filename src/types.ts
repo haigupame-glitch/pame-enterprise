@@ -40,6 +40,8 @@ export interface Member {
   loginPassword?: string;
   role?: Role;
   authVersion?: number;
+  isOnline?: boolean;
+  lastActive?: string;
 }
 
 export interface Collection {
