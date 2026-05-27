@@ -105,7 +105,13 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
     } catch (err: any) {
       console.error('Google Auth Error:', err);
-      setError(err.message || 'Google Auth failed');
+      let errMsg = err.message || 'Google Auth failed';
+      if (errMsg.toLowerCase().includes('popup') || errMsg.toLowerCase().includes('cross-origin')) {
+        errMsg = "Google Sign-In is blocked inside this preview window. Please use the arrow icon in the top right to open the app in a new full-browser tab, then try again.";
+      } else if (err.code === 'auth/operation-not-allowed') {
+        errMsg = "Google Sign-In is not enabled. Please enable the Google provider in your Firebase Console under Authentication > Sign-in method.";
+      }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
