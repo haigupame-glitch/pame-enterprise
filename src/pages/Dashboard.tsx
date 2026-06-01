@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { Users, Building, Wallet, ScrollText, Download, CheckCircle2 } from 'lucide-react';
+import { Users, Building, Wallet, ScrollText, Download, CheckCircle2, CalendarDays } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { format, isAfter, startOfDay } from 'date-fns';
 
 export function Dashboard() {
   const { 
@@ -15,8 +16,17 @@ export function Dashboard() {
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
   const groupTransactions = transactions.filter(t => t.groupId === activeGroupId);
+  const groupActivities = activities.filter(a => a.groupId === activeGroupId);
   
   const latestBalance = groupTransactions.length > 0 ? groupTransactions[groupTransactions.length - 1].runningBalance : 0;
+
+  const upcomingEvents = useMemo(() => {
+    const today = startOfDay(new Date());
+    return groupActivities
+      .filter(a => isAfter(new Date(a.date), today) || new Date(a.date).toDateString() === new Date().toDateString())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 3); // Show top 3 upcoming
+  }, [groupActivities]);
 
   const handleDownloadBackup = () => {
     const backupData = {
@@ -132,7 +142,7 @@ export function Dashboard() {
               <div className="stat-huge text-app-primary text-4xl z-10 relative">{formatCurrency(latestBalance)}</div>
             </div>
 
-            <div className="bento-card relative overflow-hidden group lg:col-span-4 flex flex-col md:flex-row items-center justify-between bg-slate-800/20">
+            <div className="bento-card relative overflow-hidden group lg:col-span-4 flex flex-col md:flex-row items-center justify-between bg-slate-800/20 mt-6">
                <div>
                   <div className="card-header border-b-0 mb-0 lg:mb-2">
                     TOTAL TRANSACTIONS
@@ -151,6 +161,39 @@ export function Dashboard() {
                  )}
                </div>
             </div>
+
+             <div className="bento-card relative overflow-hidden group lg:col-span-4 bg-app-card border-app-border mt-2">
+               <div className="absolute right-0 top-0 w-32 h-32 bg-app-accent/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 pointer-events-none"></div>
+               <div className="flex items-center justify-between mb-4 relative z-10">
+                 <div className="card-header !mb-0 flex items-center gap-2">
+                   UPCOMING EVENTS
+                   <CalendarDays className="h-4 w-4 text-app-accent ml-1" strokeWidth={1.5} />
+                 </div>
+                 <Link to="/activities" className="text-xs font-semibold text-app-primary hover:text-blue-400 uppercase tracking-wider transition-colors">
+                   View All
+                 </Link>
+               </div>
+               
+               {upcomingEvents.length > 0 ? (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
+                   {upcomingEvents.map(event => (
+                     <div key={event.id} className="relative bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex flex-col gap-2 hover:bg-slate-800/60 transition-colors shadow-sm">
+                        <div className="flex justify-between items-start">
+                           <div className="font-semibold text-slate-200 line-clamp-1 mr-2" title={event.title}>{event.title}</div>
+                           <div className="text-[10px] sm:text-xs font-mono font-medium bg-app-primary/20 text-app-primary px-2 py-1 rounded whitespace-nowrap shrink-0">
+                              {format(new Date(event.date), 'MMM dd, yyyy')}
+                           </div>
+                        </div>
+                        <p className="text-sm text-slate-400 line-clamp-2 mt-1">{event.description}</p>
+                     </div>
+                   ))}
+                 </div>
+               ) : (
+                 <div className="text-center py-8 bg-slate-800/20 rounded-xl border border-dashed border-slate-700/50 relative z-10">
+                   <p className="text-sm text-slate-400">No upcoming activities or events planned.</p>
+                 </div>
+               )}
+             </div>
           </>
         )}
       </div>
