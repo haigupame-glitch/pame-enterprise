@@ -9,7 +9,7 @@ import { MemberLoginModal } from '../components/MemberLoginModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Members() {
-  const { members, groups, activeGroupId, addMember, updateMember, deleteMember, currentUserRole, currentUserId } = useAppContext();
+  const { members, groups, activeGroupId, addMember, updateMember, deleteMember, currentUserRole, currentUserId, collections, loans, loanRepayments } = useAppContext();
   const [name, setName] = useState('');
   const [memberNumber, setMemberNumber] = useState('');
   const [contact, setContact] = useState('');
@@ -41,15 +41,39 @@ export function Members() {
     return inactiveTime < 5 * 60 * 1000;
   };
 
+  const checkEligibility = (memberId: string) => {
+    const memberLoans = loans.filter(l => l.memberId === memberId && l.status === 'Active');
+    const memberCollections = collections.filter(c => c.memberId === memberId).reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    
+    if (memberLoans.length > 0) {
+      // Find total unpaid principal
+      const unpaidPrincipal = memberLoans.reduce((sum, loan) => {
+        const repayments = loanRepayments.filter(r => r.loanId === loan.id).reduce((rSum, r) => rSum + (Number(r.principalAmount) || 0), 0);
+        return sum + (loan.principal - repayments);
+      }, 0);
+      
+      if (unpaidPrincipal > 0) {
+        return { status: 'Not Eligible', reason: 'Active Loan' };
+      }
+    }
+    
+    if (memberCollections === 0) {
+      return { status: 'Not Eligible', reason: 'No Collections' };
+    }
+    
+    return { status: 'Eligible', reason: 'Meets Criteria' };
+  };
+
   const canDeleteMember = currentUserRole === 'SUPER_ADMIN';
 
   const exportToCSV = () => {
     if (!groupMembers.length) return;
 
-    const headers = ['SL No.', 'Member ID', 'Name', 'Contact', 'Aadhar', 'Address', 'Join Date', 'Role'];
+    const headers = ['SL No.', 'Member ID', 'Name', 'Contact', 'Aadhar', 'Address', 'Join Date', 'Role', 'Eligibility'];
     const csvData = [
       headers.join(','),
       ...groupMembers.map((m, index) => {
+        const eligibility = checkEligibility(m.id);
         return [
           index + 1,
           `"${m.memberNumber || ''}"`,
@@ -58,7 +82,8 @@ export function Members() {
           `"${m.aadharNumber || ''}"`,
           `"${(m.address || '').replace(/"/g, '""')}"`,
           `"${m.joinDate || ''}"`,
-          `"${m.role || 'MEMBER'}"`
+          `"${m.role || 'MEMBER'}"`,
+          `"${eligibility.status}"`
         ].join(',');
       })
     ].join('\n');
@@ -218,6 +243,7 @@ export function Members() {
                 <th>Aadhar</th>
                 <th>Address</th>
                 <th>Join Date</th>
+                <th>Eligibility</th>
                 {(canAddMember || currentUserRole === 'MEMBER') && <th className="w-24 text-right">Actions</th>}
               </tr>
             </thead>
@@ -273,6 +299,7 @@ export function Members() {
                         />
                       </td>
                       <td className="text-sm text-app-muted">{format(new Date(member.joinDate), 'dd/MM/yy')}</td>
+                      <td className="text-sm text-app-muted"></td>
                       <td className="text-right">
                         <div className="flex justify-end gap-2">
                           <button onClick={() => saveEdit(member)} className="text-app-accent hover:text-emerald-400 p-1" title="Save"><Check className="w-4 h-4" /></button>
@@ -311,6 +338,11 @@ export function Members() {
                       <td className="font-mono text-sm">{member.aadharNumber || '-'}</td>
                       <td className="text-sm">{member.address || '-'}</td>
                       <td className="text-sm text-app-muted">{format(new Date(member.joinDate), 'dd/MM/yy')}</td>
+                      <td>
+                         <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded", checkEligibility(member.id).status === 'Eligible' ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20")} title={checkEligibility(member.id).reason}>
+                           {checkEligibility(member.id).status}
+                         </span>
+                      </td>
                       {(canAddMember || currentUserRole === 'MEMBER') && (
                         <td className="text-right">
                           <div className="flex justify-end gap-2 items-center">
