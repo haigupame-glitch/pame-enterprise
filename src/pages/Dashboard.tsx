@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { Users, Building, Wallet, ScrollText, Download, CheckCircle2, CalendarDays } from 'lucide-react';
+import { Users, Building, Wallet, ScrollText, Download, CheckCircle2, CalendarDays, TrendingUp, HandCoins } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { format, isAfter, startOfDay } from 'date-fns';
@@ -27,6 +27,34 @@ export function Dashboard() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 3); // Show top 3 upcoming
   }, [groupActivities]);
+
+  const currentMonthSummary = useMemo(() => {
+    if (!activeGroup) return { collections: 0, repayments: 0, total: 0 };
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    const monthCollections = collections
+      .filter(c => c.groupId === activeGroupId && Number(c.year) === currentYear && Number(c.month) === currentMonth)
+      .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+      
+    const groupLoanIds = new Set(loans.filter(l => l.groupId === activeGroupId).map(l => l.id));
+    
+    const monthRepayments = loanRepayments
+      .filter(r => {
+        if (!groupLoanIds.has(r.loanId)) return false;
+        const repDate = new Date(r.date);
+        return repDate.getFullYear() === currentYear && repDate.getMonth() === currentMonth;
+      })
+      .reduce((sum, r) => sum + (Number(r.principalAmount) || 0) + (Number(r.interestAmount) || 0), 0);
+      
+    return {
+      collections: monthCollections,
+      repayments: monthRepayments,
+      total: monthCollections + monthRepayments
+    };
+  }, [activeGroup, activeGroupId, collections, loans, loanRepayments]);
 
   const handleDownloadBackup = () => {
     const backupData = {
@@ -161,6 +189,35 @@ export function Dashboard() {
                  )}
                </div>
             </div>
+
+             <div className="bento-card relative overflow-hidden group border-app-primary/30 lg:col-span-4 bg-slate-800/40 mt-2">
+               <div className="absolute right-0 top-0 w-32 h-32 bg-app-primary/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 pointer-events-none"></div>
+               <div className="card-header !mb-4">
+                 THIS MONTH'S SUMMARY ({format(new Date(), 'MMMM yyyy')})
+                 <TrendingUp className="h-4 w-4 text-emerald-400 ml-2 inline-block" strokeWidth={1.5} />
+               </div>
+               
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 relative z-10">
+                 <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                   <div className="text-xs text-slate-400 font-medium tracking-wider mb-1 flex items-center gap-1.5">
+                     <HandCoins className="w-3.5 h-3.5" /> Collections
+                   </div>
+                   <div className="text-xl font-bold text-slate-200">{formatCurrency(currentMonthSummary.collections)}</div>
+                 </div>
+                 
+                 <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                   <div className="text-xs text-slate-400 font-medium tracking-wider mb-1 flex items-center gap-1.5">
+                     <Wallet className="w-3.5 h-3.5" /> Loan Repayments
+                   </div>
+                   <div className="text-xl font-bold text-slate-200">{formatCurrency(currentMonthSummary.repayments)}</div>
+                 </div>
+                 
+                 <div className="bg-app-primary/10 p-4 rounded-xl border border-app-primary/20">
+                   <div className="text-xs text-app-primary font-medium tracking-wider mb-1">Total Inflow</div>
+                   <div className="text-2xl font-bold text-app-primary">{formatCurrency(currentMonthSummary.total)}</div>
+                 </div>
+               </div>
+             </div>
 
              <div className="bento-card relative overflow-hidden group lg:col-span-4 bg-app-card border-app-border mt-2">
                <div className="absolute right-0 top-0 w-32 h-32 bg-app-accent/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 pointer-events-none"></div>

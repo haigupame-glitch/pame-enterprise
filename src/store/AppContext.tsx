@@ -310,8 +310,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const enforceTreasurerOrAbove = () => {
     if (state.currentUserRole === 'SUPER_ADMIN') return true;
+    if (state.currentUserRole === 'ADMIN') return true;
     const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
-    if (state.currentUserRole === 'ADMIN' && !!activeGroup?.allowAdminEdit) return true;
     if (state.currentUserRole === 'TREASURER' && !!activeGroup?.allowTreasurerEdit) return true;
     return false;
   };
