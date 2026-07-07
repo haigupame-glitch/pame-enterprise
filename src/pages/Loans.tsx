@@ -329,7 +329,6 @@ export function Loans() {
                   <th className="border border-app-border p-2" colSpan={3}></th>
                   <th className="border border-app-border p-2 text-center text-app-text" colSpan={3}>To be Repaid</th>
                   <th className="border border-app-border p-2" colSpan={2}></th>
-                  <th className="border border-app-border p-2 text-center text-app-text" colSpan={2}>Repayment Dues</th>
                   <th className="border border-app-border p-2 text-center text-app-text" colSpan={3}>Repayment</th>
                   <th className="border border-app-border p-2 text-center text-app-text" colSpan={2}>Balance Amount of</th>
                 </tr>
@@ -342,8 +341,6 @@ export function Loans() {
                   <th className="border border-app-border p-1 text-right">Total</th>
                   <th className="border border-app-border p-1 text-center">Days</th>
                   <th className="border border-app-border p-1">Payment Date</th>
-                  <th className="border border-app-border p-1 text-right">Principal</th>
-                  <th className="border border-app-border p-1 text-right">Interest</th>
                   <th className="border border-app-border p-1 text-right">Principal</th>
                   <th className="border border-app-border p-1 text-right">Interest</th>
                   <th className="border border-app-border p-1 text-right">Total</th>
@@ -362,8 +359,6 @@ export function Loans() {
                     <td className="border border-app-border p-1 text-right text-app-text font-mono">{formatCurrency(r.totalToBeRepaid)}</td>
                     <td className="border border-app-border p-1 text-center text-app-muted">{r.months}</td>
                     <td className="border border-app-border p-1 whitespace-nowrap text-app-text">{format(r.paymentDate, 'dd/MM/yyyy')}</td>
-                    <td className="border border-app-border p-1 text-right text-app-text font-mono">{formatCurrency(r.duesPrincipal)}</td>
-                    <td className="border border-app-border p-1 text-right text-app-text font-mono">{formatCurrency(r.duesInterest)}</td>
                     <td className="border border-app-border p-1 text-right text-app-primary font-mono">{formatCurrency(r.repPrincipal)}</td>
                     <td className="border border-app-border p-1 text-right text-app-primary font-mono">{formatCurrency(r.repInterest)}</td>
                     <td className="border border-app-border p-1 text-right bg-app-accent/10 text-app-accent font-bold font-mono">{formatCurrency(r.repTotal)}</td>
