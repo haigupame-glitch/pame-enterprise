@@ -22,6 +22,7 @@ export interface Group {
   ifscCode?: string;
   upiId?: string;
   allowAdminEdit?: boolean;
+  allowAdminEditFinances?: boolean;
   allowTreasurerEdit?: boolean;
 }
 

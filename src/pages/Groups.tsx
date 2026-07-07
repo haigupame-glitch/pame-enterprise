@@ -32,6 +32,7 @@ export function Groups() {
   const [upiId, setUpiId] = useState('');
   const [switchPasswordValue, setSwitchPasswordValue] = useState('');
   const [allowAdminEdit, setAllowAdminEdit] = useState(false);
+  const [allowAdminEditFinances, setAllowAdminEditFinances] = useState(false);
   const [allowTreasurerEdit, setAllowTreasurerEdit] = useState(false);
   const [newGroupPassword, setNewGroupPassword] = useState('');
   const [cropModalData, setCropModalData] = useState<{ src: string; isLogo: boolean } | null>(null);
@@ -49,6 +50,7 @@ export function Groups() {
       setUpiId(activeGroup.upiId || '');
       setSwitchPasswordValue(activeGroup.switchPassword || '');
       setAllowAdminEdit(!!activeGroup.allowAdminEdit);
+      setAllowAdminEditFinances(!!activeGroup.allowAdminEditFinances);
       setAllowTreasurerEdit(!!activeGroup.allowTreasurerEdit);
     }
   }, [activeGroup]);
@@ -88,6 +90,7 @@ export function Groups() {
         upiId,
         switchPassword: switchPasswordValue,
         allowAdminEdit,
+        allowAdminEditFinances,
         allowTreasurerEdit
       });
       alert('Group information saved successfully!');
@@ -429,6 +432,15 @@ export function Groups() {
                             className="rounded border-app-border text-app-primary focus:ring-app-primary focus:ring-offset-0 bg-transparent"
                           />
                           Allow Admins to edit Group settings
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-app-text cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={allowAdminEditFinances}
+                            onChange={(e) => setAllowAdminEditFinances(e.target.checked)}
+                            className="rounded border-app-border text-app-primary focus:ring-app-primary focus:ring-offset-0 bg-transparent"
+                          />
+                          Allow Admins to edit finances
                         </label>
                         <label className="flex items-center gap-2 text-sm text-app-text cursor-pointer">
                           <input

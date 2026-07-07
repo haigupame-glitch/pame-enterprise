@@ -38,7 +38,7 @@ export function Loans() {
 
   const getMemberName = (id: string) => members.find(m => m.id === id)?.name || 'Unknown';
 
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || (currentUserRole === 'TREASURER' && activeGroup?.allowTreasurerEdit);
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || (currentUserRole === 'ADMIN' && activeGroup?.allowAdminEditFinances) || (currentUserRole === 'TREASURER' && activeGroup?.allowTreasurerEdit);
 
   const exportLoansToCSV = () => {
     if (!groupLoans.length) return;
@@ -577,7 +577,7 @@ export function Loans() {
           <div className="bento-card !p-0 overflow-hidden">
             <div className="p-4 border-b-2 border-app-border flex justify-between items-center">
               <div className="card-header !mb-0">LOAN PORTFOLIO</div>
-              {(currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER') && groupLoans.length > 0 && (
+              {canEdit && groupLoans.length > 0 && (
                 <button
                   onClick={exportLoansToCSV}
                   className="flex items-center gap-2 bento-btn bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 text-xs"

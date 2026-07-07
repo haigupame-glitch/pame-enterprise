@@ -5,12 +5,13 @@ import { generateId } from '../lib/utils';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export function Collections() {
-  const { members, collections, activeGroupId, saveCollection, currentUserRole } = useAppContext();
+  const { members, groups, collections, activeGroupId, saveCollection, currentUserRole } = useAppContext();
   const [year, setYear] = useState(new Date().getFullYear());
 
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
   
-  const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
+  const activeGroup = groups.find(g => g.id === activeGroupId);
+  const canEdit = currentUserRole === 'SUPER_ADMIN' || (currentUserRole === 'ADMIN' && activeGroup?.allowAdminEditFinances) || (currentUserRole === 'TREASURER' && activeGroup?.allowTreasurerEdit);
 
   const handleAmountChange = (memberId: string, month: number, value: string) => {
     if (!activeGroupId) return;
