@@ -1,5 +1,6 @@
 import React, {StrictMode, Component, ErrorInfo} from 'react';
 import {createRoot} from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import App from './App.tsx';
 import { AppProvider } from './store/AppContext';
 import './index.css';
@@ -66,6 +67,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <AppProvider>
         <App />
+        <Analytics />
       </AppProvider>
     </ErrorBoundary>
   </StrictMode>,
