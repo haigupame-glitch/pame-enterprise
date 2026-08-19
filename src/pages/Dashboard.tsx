@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { Users, Building, Wallet, ScrollText, Download, CheckCircle2, CalendarDays, TrendingUp, HandCoins } from 'lucide-react';
+import { Users, Building, Wallet, ScrollText, Download, CheckCircle2, CalendarDays, TrendingUp, TrendingDown, HandCoins, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { format, isAfter, startOfDay } from 'date-fns';
@@ -28,33 +28,23 @@ export function Dashboard() {
       .slice(0, 3); // Show top 3 upcoming
   }, [groupActivities]);
 
-  const currentMonthSummary = useMemo(() => {
-    if (!activeGroup) return { collections: 0, repayments: 0, total: 0 };
+  const monthlyCashFlow = useMemo(() => {
+    if (!activeGroup) return { income: 0, expense: 0, net: 0 };
     
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    const monthCollections = collections
-      .filter(c => c.groupId === activeGroupId && Number(c.year) === currentYear && Number(c.month) === currentMonth)
-      .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-      
-    const groupLoanIds = new Set(loans.filter(l => l.groupId === activeGroupId).map(l => l.id));
+    const monthTransactions = groupTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    });
     
-    const monthRepayments = loanRepayments
-      .filter(r => {
-        if (!groupLoanIds.has(r.loanId)) return false;
-        const repDate = new Date(r.date);
-        return repDate.getFullYear() === currentYear && repDate.getMonth() === currentMonth;
-      })
-      .reduce((sum, r) => sum + (Number(r.principalAmount) || 0) + (Number(r.interestAmount) || 0), 0);
-      
-    return {
-      collections: monthCollections,
-      repayments: monthRepayments,
-      total: monthCollections + monthRepayments
-    };
-  }, [activeGroup, activeGroupId, collections, loans, loanRepayments]);
+    const income = monthTransactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + (Number(t.payIn) || 0), 0);
+    const expense = monthTransactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + (Number(t.payOut) || 0), 0);
+    
+    return { income, expense, net: income - expense };
+  }, [activeGroup, groupTransactions]);
 
   const handleDownloadBackup = () => {
     const backupData = {
@@ -190,31 +180,35 @@ export function Dashboard() {
                </div>
             </div>
 
-             <div className="bento-card relative overflow-hidden group border-app-primary/30 lg:col-span-4 bg-slate-800/40 mt-2">
-               <div className="absolute right-0 top-0 w-32 h-32 bg-app-primary/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 pointer-events-none"></div>
+             <div className="bento-card relative overflow-hidden group border-app-accent/30 lg:col-span-4 bg-slate-800/40 mt-2">
+               <div className="absolute right-0 top-0 w-32 h-32 bg-app-accent/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 pointer-events-none"></div>
                <div className="card-header !mb-4">
                  THIS MONTH'S SUMMARY ({format(new Date(), 'MMMM yyyy')})
-                 <TrendingUp className="h-4 w-4 text-emerald-400 ml-2 inline-block" strokeWidth={1.5} />
+                 <Wallet className="h-4 w-4 text-app-accent ml-2 inline-block" strokeWidth={1.5} />
                </div>
                
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 relative z-10">
                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
                    <div className="text-xs text-slate-400 font-medium tracking-wider mb-1 flex items-center gap-1.5">
-                     <HandCoins className="w-3.5 h-3.5" /> Collections
+                     <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" /> Total Collections (Income)
                    </div>
-                   <div className="text-xl font-bold text-slate-200">{formatCurrency(currentMonthSummary.collections)}</div>
+                   <div className="text-xl font-bold text-slate-200">{formatCurrency(monthlyCashFlow.income)}</div>
                  </div>
                  
                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
                    <div className="text-xs text-slate-400 font-medium tracking-wider mb-1 flex items-center gap-1.5">
-                     <Wallet className="w-3.5 h-3.5" /> Loan Repayments
+                     <ArrowDownRight className="w-3.5 h-3.5 text-rose-400" /> Total Disbursements (Expense)
                    </div>
-                   <div className="text-xl font-bold text-slate-200">{formatCurrency(currentMonthSummary.repayments)}</div>
+                   <div className="text-xl font-bold text-slate-200">{formatCurrency(monthlyCashFlow.expense)}</div>
                  </div>
                  
-                 <div className="bg-app-primary/10 p-4 rounded-xl border border-app-primary/20">
-                   <div className="text-xs text-app-primary font-medium tracking-wider mb-1">Total Inflow</div>
-                   <div className="text-2xl font-bold text-app-primary">{formatCurrency(currentMonthSummary.total)}</div>
+                 <div className="bg-app-accent/10 p-4 rounded-xl border border-app-accent/20">
+                   <div className="text-xs text-app-accent font-medium tracking-wider mb-1 flex items-center gap-1.5">
+                     Net Cash Flow {monthlyCashFlow.net >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
+                   </div>
+                   <div className={`text-2xl font-bold ${monthlyCashFlow.net >= 0 ? 'text-app-accent' : 'text-rose-400'}`}>
+                     {monthlyCashFlow.net < 0 ? '-' : ''}{formatCurrency(Math.abs(monthlyCashFlow.net))}
+                   </div>
                  </div>
                </div>
              </div>
