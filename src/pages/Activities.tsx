@@ -1,3 +1,4 @@
+import { DateInput } from "../components/DateInput";
 import React, { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { generateId, formatCurrency, resizeImage } from '../lib/utils';
@@ -117,7 +118,7 @@ export function Activities() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="label-small mb-1 block">Date of Activity</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="bento-input" />
+                <DateInput value={date} onChange={setDate} required className="bento-input" />
               </div>
               <div>
                 <label className="label-small mb-1 block">Activity Title</label>
@@ -197,7 +198,7 @@ export function Activities() {
           if (editingId === activity.id) {
              return (
                <div key={activity.id} className="bento-card border-l-4 border-l-app-primary space-y-4">
-                 <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="bento-input" />
+                 <DateInput value={editDate} onChange={setEditDate} className="bento-input" />
                  <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} className="bento-input w-full" />
                  <textarea rows={4} value={editDescription} onChange={e => setEditDescription(e.target.value)} className="bento-input w-full" />
                  

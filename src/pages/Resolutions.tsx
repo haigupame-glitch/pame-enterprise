@@ -1,3 +1,4 @@
+import { DateInput } from "../components/DateInput";
 import React, { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { generateId } from '../lib/utils';
@@ -53,7 +54,7 @@ export function Resolutions() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="label-small mb-1 block">Date of Meeting</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="bento-input" />
+                <DateInput value={date} onChange={setDate} required className="bento-input" />
               </div>
               <div>
                 <label className="label-small mb-1 block">Resolution Text</label>
@@ -72,7 +73,7 @@ export function Resolutions() {
           if (editingId === res.id) {
              return (
                <div key={res.id} className="bento-card space-y-4">
-                 <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="bento-input w-full" />
+                 <DateInput value={editDate} onChange={setEditDate} className="bento-input w-full" />
                  <textarea rows={6} value={editText} onChange={e => setEditText(e.target.value)} className="bento-input w-full" />
                  <div className="flex justify-end gap-2">
                    <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-slate-200 rounded">Cancel</button>

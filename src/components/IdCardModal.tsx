@@ -1,3 +1,4 @@
+import { DateInput } from "./DateInput";
 import React, { useRef, useState } from 'react';
 import * as htmlToImage from 'html-to-image';
 import { X, Download, Upload, Camera, Building } from 'lucide-react';
@@ -238,11 +239,10 @@ export function IdCardModal({ member, group, onClose }: IdCardModalProps) {
             </div>
             <div>
               <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Issue Date</label>
-              <input 
-                type="date" 
+              <DateInput 
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none" 
                 value={member.idIssueDate ? member.idIssueDate.split('T')[0] : new Date().toISOString().split('T')[0]} 
-                onChange={(e) => updateMember({ ...member, idIssueDate: new Date(e.target.value).toISOString() })}
+                onChange={(v) => { if (v) updateMember({ ...member, idIssueDate: new Date(v).toISOString() }) }}
               />
             </div>
           </div>

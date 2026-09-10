@@ -1,3 +1,4 @@
+import { DateInput } from "../components/DateInput";
 import React from 'react';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '../store/AppContext';
@@ -211,7 +212,7 @@ export function Transactions() {
             <div className="card-header w-full !mb-0">ADD TRANSACTION</div>
             <div className="flex-1 min-w-[120px]">
               <label className="label-small mb-1 block">Date</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="bento-input" />
+              <DateInput value={date} onChange={setDate} required className="bento-input" />
             </div>
             <div className="flex-[2] min-w-[200px]">
               <label className="label-small mb-1 block">Particulars</label>
@@ -282,11 +283,11 @@ export function Transactions() {
             <>
               <div className="flex-1 min-w-[120px]">
                  <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">From Date</label>
-                 <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
+                 <DateInput value={filterStartDate} onChange={setFilterStartDate} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
               </div>
               <div className="flex-1 min-w-[120px]">
                  <label className="text-[10px] uppercase font-bold text-app-muted block mb-1">To Date</label>
-                 <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
+                 <DateInput value={filterEndDate} onChange={setFilterEndDate} className="bento-input py-1.5 text-sm w-full cursor-pointer" />
               </div>
             </>
           )}
@@ -357,7 +358,7 @@ export function Transactions() {
                 <tr key={tx.id} className="hover:bg-slate-700/20 transition-colors">
                   {editingId === tx.id ? (
                     <>
-                      <td className="p-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="bento-input py-1 px-1 text-xs w-full min-w-[100px]" /></td>
+                      <td className="p-1"><DateInput value={editForm.date} onChange={v => setEditForm({...editForm, date: v})} className="bento-input py-1 px-1 text-xs w-full min-w-[100px]" /></td>
                       <td className="p-1 border-l border-app-border"><input type="text" value={editForm.particulars} onChange={e => setEditForm({...editForm, particulars: e.target.value})} className="bento-input py-1 px-2 text-sm w-full min-w-[120px]" /></td>
                       <td className="p-1 border-l border-app-border">
                         <select value={editForm.memberId} onChange={e => setEditForm({...editForm, memberId: e.target.value})} className="bento-input py-1 px-1 text-xs w-full min-w-[100px]">

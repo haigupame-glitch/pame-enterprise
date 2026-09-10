@@ -1,3 +1,4 @@
+import { DateInput } from "../components/DateInput";
 import React from 'react';
 import { useState } from 'react';
 import { useAppContext } from '../store/AppContext';
@@ -390,7 +391,7 @@ export function Loans() {
               <form onSubmit={handleAddRepayment} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div>
                   <label className="label-small mb-1 block">Payment Date</label>
-                  <input type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} required className="bento-input" />
+                  <DateInput value={repayDate} onChange={setRepayDate} required className="bento-input" />
                 </div>
                 <div>
                   <label className="label-small mb-1 block">Principal Amount</label>
@@ -429,10 +430,9 @@ export function Loans() {
                       {editingRepaymentId === rep.id ? (
                         <>
                           <td className="border border-app-border p-2">
-                            <input 
-                                type="date" 
+                            <DateInput 
                                 value={editRepaymentForm.date} 
-                                onChange={e => setEditRepaymentForm({...editRepaymentForm, date: e.target.value})} 
+                                onChange={v => setEditRepaymentForm({...editRepaymentForm, date: v})} 
                                 className="bento-input py-1 px-2 text-xs w-full"
                               />
                           </td>
@@ -533,7 +533,7 @@ export function Loans() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="label-small mb-1 block">Issue Date</label>
-                    <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} required className="bento-input" />
+                    <DateInput value={issueDate} onChange={setIssueDate} required className="bento-input" />
                   </div>
                   <div>
                     <label className="label-small mb-1 block">Term (Months)</label>
@@ -620,10 +620,9 @@ export function Loans() {
                           <>
                             <td>
                               <div className="font-bold">{getMemberName(loan.memberId)}</div>
-                              <input 
-                                type="date" 
+                              <DateInput 
                                 value={editLoanForm.issueDate} 
-                                onChange={e => setEditLoanForm({...editLoanForm, issueDate: e.target.value})} 
+                                onChange={v => setEditLoanForm({...editLoanForm, issueDate: v})} 
                                 className="bento-input py-1 px-2 text-xs mt-1 w-full"
                               />
                             </td>
