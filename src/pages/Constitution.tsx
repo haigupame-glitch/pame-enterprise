@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../store/AppContext';
+import { Upload } from 'lucide-react';
 
 export function Constitution() {
   const { groups, activeGroupId, updateGroup, currentUserRole } = useAppContext();
@@ -7,6 +8,7 @@ export function Constitution() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [constitutionText, setConstitutionText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (activeGroup) {
@@ -23,6 +25,23 @@ export function Constitution() {
     setIsEditing(false);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text === 'string') {
+        setConstitutionText(text);
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Reset input
+    }
+  };
+
   const canEdit = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'TREASURER';
 
   return (
@@ -33,12 +52,31 @@ export function Constitution() {
           <p className="text-app-muted text-sm mt-1">Rules, bylaws, and guidelines for {activeGroup.name}</p>
         </div>
         {canEdit && !isEditing && (
-          <button 
-            onClick={() => setIsEditing(true)}
-            className="bento-btn bento-btn-primary"
-          >
-            Edit Constitution
-          </button>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              accept=".txt,.md,.csv"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                setIsEditing(true);
+                handleFileUpload(e);
+              }}
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="bento-btn bg-slate-800 text-white flex items-center gap-2 hover:bg-slate-700"
+            >
+              <Upload className="w-4 h-4" />
+              Import File
+            </button>
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="bento-btn bento-btn-primary"
+            >
+              Edit Constitution
+            </button>
+          </div>
         )}
       </div>
 
@@ -51,22 +89,40 @@ export function Constitution() {
               onChange={(e) => setConstitutionText(e.target.value)}
               placeholder="Enter the constitution text here..."
             />
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => {
-                  setConstitutionText(activeGroup.constitution || '');
-                  setIsEditing(false);
-                }}
-                className="bento-btn bg-slate-700 text-white"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSave}
-                className="bento-btn bento-btn-primary"
-              >
-                Save Changes
-              </button>
+            <div className="flex justify-between">
+              <div>
+                <input
+                  type="file"
+                  accept=".txt,.md,.csv"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bento-btn bg-slate-800 text-white flex items-center gap-2 hover:bg-slate-700"
+                >
+                  <Upload className="w-4 h-4" />
+                  Import Text File
+                </button>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => {
+                    setConstitutionText(activeGroup.constitution || '');
+                    setIsEditing(false);
+                  }}
+                  className="bento-btn bg-slate-700 text-white"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSave}
+                  className="bento-btn bento-btn-primary"
+                >
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
         ) : (
