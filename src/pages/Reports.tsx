@@ -1,12 +1,17 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useAppContext } from '../store/AppContext';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
-import { Printer, Share2, FileDown, Download, CheckCircle2 } from 'lucide-react';
+import { Printer, Share2, FileDown, Download, CheckCircle2, Calendar } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 
-type ReportTab = 'members' | 'loans' | 'transactions';
+type ReportTab = 'members' | 'loans' | 'transactions' | 'balance-sheet';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export function Reports() {
   const { 
@@ -19,10 +24,36 @@ export function Reports() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [reportYear, setReportYear] = useState<number>(new Date().getFullYear());
+  
+  // Month range filter states
+  const [startMonth, setStartMonth] = useState<number>(0); // 0 = Jan
+  const [endMonth, setEndMonth] = useState<number>(4); // 4 = May
+
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Guarantee reportYear is not NaN from previous stale states
   const safeReportYear = isNaN(reportYear) ? new Date().getFullYear() : reportYear;
+
+  const startMonthIndex = Math.min(startMonth, endMonth);
+  const endMonthIndex = Math.max(startMonth, endMonth);
+
+  const activeMonthIndices = useMemo(() => {
+    return Array.from(
+      { length: endMonthIndex - startMonthIndex + 1 },
+      (_, i) => startMonthIndex + i
+    );
+  }, [startMonthIndex, endMonthIndex]);
+
+  const periodLabel = startMonthIndex === endMonthIndex
+    ? `${MONTH_NAMES[startMonthIndex]} ${safeReportYear}`
+    : `${MONTH_NAMES[startMonthIndex]} to ${MONTH_NAMES[endMonthIndex]} ${safeReportYear}`;
+
+  const periodFileLabel = startMonthIndex === endMonthIndex
+    ? `${MONTH_NAMES[startMonthIndex]}_${safeReportYear}`
+    : `${MONTH_NAMES[startMonthIndex]}_to_${MONTH_NAMES[endMonthIndex]}_${safeReportYear}`;
+
+  const periodStartDate = new Date(safeReportYear, startMonthIndex, 1, 0, 0, 0, 0);
+  const periodEndDate = new Date(safeReportYear, endMonthIndex + 1, 0, 23, 59, 59, 999);
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const groupName = activeGroup?.name || 'Group';
@@ -33,6 +64,14 @@ export function Reports() {
   const groupLoans = loans.filter(l => l.groupId === activeGroupId);
   const groupRepayments = loanRepayments; // Repayments linked by loanId, which is already filtered by groupLoans below
   const groupTransactions = transactions.filter(t => t.groupId === activeGroupId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const periodTransactions = groupTransactions.filter(t => {
+    const d = new Date(t.date);
+    return d >= periodStartDate && d <= periodEndDate;
+  });
+
+  const yearCollections = groupCollections.filter(c => Number(c.year) === Number(safeReportYear));
+  const periodCollections = yearCollections.filter(c => activeMonthIndices.includes(Number(c.month)));
 
   const availableYears = Array.from(
     new Set(groupCollections.map(c => Number(c.year)))
@@ -69,8 +108,8 @@ export function Reports() {
           pixelRatio: 2
         });
         
-        // Use landscape logic if we are doing a loan ledger to fit 16 columns better, and also Members for 12 months
-        const isLandscape = (activeTab === 'loans' && selectedLoanId !== null) || activeTab === 'members';
+        // Use landscape logic if we are doing a loan ledger or Members report with more than 5 months
+        const isLandscape = (activeTab === 'loans' && selectedLoanId !== null) || (activeTab === 'members' && activeMonthIndices.length > 5);
         const pdf = new jsPDF(isLandscape ? 'l' : 'p', 'mm', 'a4');
         
         const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -93,7 +132,7 @@ export function Reports() {
           heightLeft -= pdfHeight;
         }
         
-        pdf.save(`SHG_Report_${activeTab}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        pdf.save(`SHG_Report_${activeTab}_${periodFileLabel}.pdf`);
       } catch (e) {
         console.error('Error generating PDF', e);
         alert('Could not generate PDF. Please try Print Report and choose "Save as PDF".');
@@ -107,13 +146,13 @@ export function Reports() {
     let reportText = '';
 
     if (activeTab === 'members') {
-      const totalCollections = groupCollections.reduce((sum, c) => sum + c.amount, 0);
-      reportText = `*MEMBERSHIP FEES SUMMARY*\nGroup: ${groupName}\nTotal Members: ${groupMembers.length}\nTotal Collections: ${formatCurrency(totalCollections)}\n\n`;
+      const totalCollections = periodCollections.reduce((sum, c) => sum + c.amount, 0);
+      reportText = `*MEMBERSHIP FEES SUMMARY*\nGroup: ${groupName}\nPeriod: ${periodLabel}\nTotal Members: ${groupMembers.length}\nTotal Collections: ${formatCurrency(totalCollections)}\n\n`;
       
       groupMembers.forEach((member, index) => {
-        const memberCollections = groupCollections.filter(c => c.memberId === member.id);
-        const total = memberCollections.reduce((sum, c) => sum + c.amount, 0);
-        reportText += `${index + 1}. ${member.name} - Total: ${formatCurrency(total)}\n`;
+        const memberCols = periodCollections.filter(c => c.memberId === member.id);
+        const total = memberCols.reduce((sum, c) => sum + c.amount, 0);
+        reportText += `${index + 1}. ${member.name} - Period Total: ${formatCurrency(total)}\n`;
       });
     } else if (activeTab === 'loans') {
       if (selectedLoanId) {
@@ -121,7 +160,7 @@ export function Reports() {
         const member = groupMembers.find(m => m.id === loan?.memberId);
         const reps = groupRepayments.filter(r => r.loanId === selectedLoanId);
 
-        reportText = `*LOAN INDIVIDUAL LEDGER*\nMember: ${member?.name}\nSanction Date: ${format(new Date(loan!.issueDate), 'dd/MM/yyyy')}\nAmount: ${formatCurrency(loan!.principal)}\nROI: ${loan!.interestRate}%\n\n`;
+        reportText = `*LOAN INDIVIDUAL LEDGER*\nMember: ${member?.name}\nPeriod: ${periodLabel}\nSanction Date: ${format(new Date(loan!.issueDate), 'dd/MM/yyyy')}\nAmount: ${formatCurrency(loan!.principal)}\nROI: ${loan!.interestRate}%\n\n`;
         let runningBalance = loan!.principal;
         
         reps.forEach((rep, index) => {
@@ -150,7 +189,7 @@ export function Reports() {
 
         const outstanding = totalPrincipal - totalRepaid;
         
-        reportText = `*LOAN PORTFOLIO REPORT*\nGroup: ${groupName}\nTotal Issued: ${formatCurrency(totalPrincipal)}\nTotal Repaid: ${formatCurrency(totalRepaid)}\nOutstanding: ${formatCurrency(outstanding)}\nInterest Earned: ${formatCurrency(totalInterest)}\n\n`;
+        reportText = `*LOAN PORTFOLIO REPORT*\nGroup: ${groupName}\nPeriod: ${periodLabel}\nTotal Issued: ${formatCurrency(totalPrincipal)}\nTotal Repaid: ${formatCurrency(totalRepaid)}\nOutstanding: ${formatCurrency(outstanding)}\nInterest Earned: ${formatCurrency(totalInterest)}\n\n`;
 
         loanDetails.forEach((loan, index) => {
           const memberName = groupMembers.find(m => m.id === loan.memberId)?.name || 'Unknown';
@@ -159,13 +198,13 @@ export function Reports() {
         });
       }
     } else if (activeTab === 'transactions') {
-      const totalIncome = groupTransactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.payIn, 0);
-      const totalExpense = groupTransactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.payOut, 0);
+      const totalIncome = periodTransactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.payIn, 0);
+      const totalExpense = periodTransactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.payOut, 0);
       const currentBalance = groupTransactions.length > 0 ? groupTransactions[groupTransactions.length - 1].runningBalance : 0;
 
-      reportText = `*TRANSACTION LEDGER REPORT*\nGroup: ${groupName}\nTotal Income: ${formatCurrency(totalIncome)}\nTotal Expense: ${formatCurrency(totalExpense)}\nCurrent Balance: ${formatCurrency(currentBalance)}\n\n`;
+      reportText = `*TRANSACTION LEDGER REPORT*\nGroup: ${groupName}\nPeriod: ${periodLabel}\nPeriod Income: ${formatCurrency(totalIncome)}\nPeriod Expense: ${formatCurrency(totalExpense)}\nNet: ${formatCurrency(totalIncome - totalExpense)}\nCurrent Balance: ${formatCurrency(currentBalance)}\n\n`;
 
-      groupTransactions.slice(-20).forEach((tx, index) => { // Limit to last 20 to avoid giant msgs
+      periodTransactions.slice(-20).forEach((tx, index) => { // Limit to last 20 to avoid giant msgs
         const dt = format(new Date(tx.date), 'dd/MM');
         const amt = tx.type === 'Income' ? `+${formatCurrency(tx.payIn)}` : `-${formatCurrency(tx.payOut)}`;
         reportText += `${index + 1}. ${dt} - ${tx.particulars} (${amt})\n`;
@@ -186,7 +225,7 @@ export function Reports() {
       const totalMembersSavings = groupCollections.reduce((sum, c) => sum + c.amount, 0);
       const retainedEarnings = totalAssets - totalMembersSavings;
 
-      reportText = `*BALANCE SHEET REPORT*\nGroup: ${groupName}\nAs of: ${format(new Date(), 'dd MMM yyyy')}\n\n`;
+      reportText = `*BALANCE SHEET REPORT*\nGroup: ${groupName}\nPeriod: ${periodLabel}\nAs of: ${format(new Date(), 'dd MMM yyyy')}\n\n`;
       reportText += `*LIABILITIES & CAPITAL*\nMembers Savings: ${formatCurrency(totalMembersSavings)}\nReserves/Surplus: ${formatCurrency(retainedEarnings)}\nTotal Liabilities: ${formatCurrency(totalAssets)}\n\n`;
       reportText += `*ASSETS*\nCash/Bank: ${formatCurrency(currentBalance)}\nOutstanding Loans: ${formatCurrency(outstandingLoans)}\nTotal Assets: ${formatCurrency(totalAssets)}`;
     }
@@ -224,51 +263,49 @@ export function Reports() {
   };
 
   const renderMembersReport = () => {
-    const yearCollections = groupCollections.filter(c => Number(c.year) === Number(safeReportYear));
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
     return (
       <div className="space-y-6 print:space-y-4">
-        <div className={`flex justify-between items-center print:hidden ${isGeneratingPdf ? 'hidden' : ''}`}>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-app-muted uppercase">Select Year:</span>
-            <select 
-              value={safeReportYear}
-              onChange={(e) => setReportYear(Number(e.target.value))}
-              className="bento-input py-1.5 px-3 min-w-[120px]"
-            >
-              {availableYears.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         <div className={`bento-card border-none p-0 print:border-none print:shadow-none ${isGeneratingPdf ? 'border-none p-0 shadow-none' : ''}`}>
           <div className="pb-4 pt-4 border-b-2 border-app-border flex justify-between items-center px-4">
-            <h3 className="text-xl font-bold text-app-text mb-0">MEMBERSHIP FEES SUMMARY</h3>
-            <span className="font-black text-app-primary">For Year : {safeReportYear}</span>
+            <div>
+              <h3 className="text-xl font-bold text-app-text mb-0">MEMBERSHIP FEES SUMMARY</h3>
+              <p className="text-xs text-app-muted mt-0.5">Showing period collections per member</p>
+            </div>
+            <div className="text-right">
+              <span className="font-black text-app-primary text-base">Period: {periodLabel}</span>
+              <div className="text-xs text-app-muted">
+                {activeMonthIndices.length} {activeMonthIndices.length === 1 ? 'month' : 'months'}
+              </div>
+            </div>
           </div>
           <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
             <table className="w-full text-sm border-collapse border border-app-border">
               <thead>
                 <tr className="bg-slate-700/30 text-xs text-app-muted">
                   <th className="border border-app-border p-2 text-center w-12">Sl.No.</th>
-                  <th className="border border-app-border p-2 text-left min-w-[120px]">Name</th>
-                  {monthNames.map(m => (
-                    <th key={m} className="border border-app-border p-2 text-center w-16">{m}</th>
+                  <th className="border border-app-border p-2 text-left min-w-[140px]">Name</th>
+                  {activeMonthIndices.map(mIdx => (
+                    <th key={mIdx} className="border border-app-border p-2 text-center min-w-[70px]">
+                      {MONTH_NAMES[mIdx].slice(0, 3)}
+                    </th>
                   ))}
+                  <th className="border border-app-border p-2 text-right min-w-[85px] text-app-primary font-bold">Total</th>
                   <th className="border border-app-border p-2 text-left min-w-[80px]">Remarks</th>
                 </tr>
               </thead>
               <tbody>
                 {groupMembers.map((member, index) => {
-                  const memberCollections = yearCollections.filter(c => c.memberId === member.id);
+                  const memberCollections = periodCollections.filter(c => c.memberId === member.id);
+                  const memberPeriodTotal = activeMonthIndices.reduce((sum, monthIndex) => {
+                    const col = memberCollections.filter(c => Number(c.month) === monthIndex);
+                    return sum + col.reduce((s, c) => s + c.amount, 0);
+                  }, 0);
+
                   return (
                     <tr key={member.id} className="hover:bg-slate-700/20">
                       <td className="border border-app-border p-1.5 text-center font-mono">{index + 1}</td>
                       <td className="border border-app-border p-1.5 font-bold whitespace-nowrap">{member.name}</td>
-                      {Array.from({ length: 12 }).map((_, monthIndex) => {
+                      {activeMonthIndices.map(monthIndex => {
                         const monthCol = memberCollections.filter(c => Number(c.month) === monthIndex);
                         const totalForMonth = monthCol.reduce((sum, c) => sum + c.amount, 0);
                         return (
@@ -277,16 +314,42 @@ export function Reports() {
                           </td>
                         );
                       })}
+                      <td className="border border-app-border p-1.5 text-right font-mono text-xs font-bold text-app-accent">
+                        {memberPeriodTotal > 0 ? formatCurrency(memberPeriodTotal) : '-'}
+                      </td>
                       <td className="border border-app-border p-1.5 text-xs text-app-muted"></td>
                     </tr>
                   );
                 })}
                 {groupMembers.length === 0 && (
                   <tr>
-                    <td colSpan={15} className="text-center py-8 text-app-muted font-bold">No members found.</td>
+                    <td colSpan={activeMonthIndices.length + 4} className="text-center py-8 text-app-muted font-bold">No members found.</td>
                   </tr>
                 )}
               </tbody>
+              {groupMembers.length > 0 && (
+                <tfoot>
+                  <tr className="bg-slate-700/40 font-bold text-xs">
+                    <td colSpan={2} className="border border-app-border p-2 text-right uppercase">Period Total</td>
+                    {activeMonthIndices.map(mIdx => {
+                      const monthTotal = yearCollections
+                        .filter(c => Number(c.month) === mIdx)
+                        .reduce((sum, c) => sum + c.amount, 0);
+                      return (
+                        <td key={mIdx} className="border border-app-border p-2 text-center font-mono text-app-primary">
+                          {monthTotal > 0 ? formatCurrency(monthTotal) : '-'}
+                        </td>
+                      );
+                    })}
+                    <td className="border border-app-border p-2 text-right font-mono text-app-accent font-black">
+                      {formatCurrency(
+                        periodCollections.reduce((sum, c) => sum + c.amount, 0)
+                      )}
+                    </td>
+                    <td className="border border-app-border p-2"></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
@@ -537,22 +600,30 @@ export function Reports() {
   };
 
   const renderTransactionsReport = () => {
-    const totalIncome = groupTransactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.payIn, 0);
-    const totalExpense = groupTransactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.payOut, 0);
+    const totalIncome = periodTransactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.payIn, 0);
+    const totalExpense = periodTransactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.payOut, 0);
+    const periodNet = totalIncome - totalExpense;
     const currentBalance = groupTransactions.length > 0 ? groupTransactions[groupTransactions.length - 1].runningBalance : 0;
 
     return (
       <div className="space-y-6 print:space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4">
           <div className="bento-card relative overflow-hidden group border-app-accent/30 bg-app-accent/5">
             <div className="absolute right-0 top-0 w-24 h-24 bg-app-accent/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 bg-opacity-10 print:hidden"></div>
-            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Total Income</div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Period Income</div>
             <div className="text-xl md:text-2xl font-black font-mono text-app-accent relative z-10 truncate" title={formatCurrency(totalIncome)}>{formatCurrency(totalIncome)}</div>
           </div>
           <div className="bento-card relative overflow-hidden group border-red-500/30 bg-red-500/5">
             <div className="absolute right-0 top-0 w-24 h-24 bg-red-500/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 bg-opacity-10 print:hidden"></div>
-            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Total Expense</div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Period Expense</div>
             <div className="text-xl md:text-2xl font-black font-mono text-red-500 relative z-10 truncate" title={formatCurrency(totalExpense)}>{formatCurrency(totalExpense)}</div>
+          </div>
+          <div className="bento-card relative overflow-hidden group border-emerald-500/30 bg-emerald-500/5">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 print:hidden"></div>
+            <div className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2 relative z-10 flex items-center gap-2">Net Cash Flow</div>
+            <div className={`text-xl md:text-2xl font-black font-mono relative z-10 truncate ${periodNet >= 0 ? 'text-emerald-400' : 'text-red-400'}`} title={formatCurrency(periodNet)}>
+              {periodNet < 0 ? '-' : ''}{formatCurrency(Math.abs(periodNet))}
+            </div>
           </div>
           <div className="bento-card relative overflow-hidden group border-app-primary/30 bg-app-primary/10">
             <div className="absolute right-0 top-0 w-24 h-24 bg-app-primary/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110 print:hidden"></div>
@@ -562,8 +633,9 @@ export function Reports() {
         </div>
 
         <div className="bento-card !p-0 overflow-hidden">
-          <div className="p-4 border-b-2 border-app-border bg-app-bg">
+          <div className="p-4 border-b-2 border-app-border bg-app-bg flex justify-between items-center">
             <h3 className="card-header !mb-0 text-app-text">TRANSACTION LEDGER REPORT</h3>
+            <span className="font-bold text-app-primary text-sm">Period: {periodLabel}</span>
           </div>
           <div className={isGeneratingPdf ? "overflow-visible" : "overflow-x-auto"}>
             <table className="bento-table">
@@ -578,7 +650,7 @@ export function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {groupTransactions.map(tx => (
+                {periodTransactions.map(tx => (
                   <tr key={tx.id}>
                     <td className="font-mono text-sm text-app-muted whitespace-nowrap">{format(new Date(tx.date), 'dd MMM yyyy')}</td>
                     <td className="font-medium max-w-[200px] truncate" title={tx.particulars}>{tx.particulars}</td>
@@ -598,9 +670,11 @@ export function Reports() {
                     </td>
                   </tr>
                 ))}
-                {groupTransactions.length === 0 && (
+                {periodTransactions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-app-muted font-bold">No transactions found.</td>
+                    <td colSpan={6} className="text-center py-8 text-app-muted font-bold">
+                      No transactions recorded for {periodLabel}.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -703,28 +777,28 @@ export function Reports() {
         </div>
       )}
       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden ${isGeneratingPdf ? 'hidden' : ''}`}>
-        <div className="flex bg-app-card p-1 rounded-xl border-2 border-app-border w-full sm:w-auto">
+        <div className="flex bg-app-card p-1 rounded-xl border-2 border-app-border w-full sm:w-auto overflow-x-auto">
           <button 
             onClick={() => { setActiveTab('members'); setSelectedLoanId(null); }}
-            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold uppercase transition-colors ${activeTab === 'members' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
+            className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'members' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
           >
             Members
           </button>
           <button 
             onClick={() => { setActiveTab('loans'); setSelectedLoanId(null); }}
-            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold uppercase transition-colors ${activeTab === 'loans' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
+            className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'loans' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
           >
             Loans
           </button>
           <button 
             onClick={() => { setActiveTab('transactions'); setSelectedLoanId(null); }}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold uppercase transition-colors ${activeTab === 'transactions' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
+            className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'transactions' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
           >
             Transactions
           </button>
           <button 
             onClick={() => { setActiveTab('balance-sheet'); setSelectedLoanId(null); }}
-            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold uppercase transition-colors ${activeTab === 'balance-sheet' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
+            className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'balance-sheet' ? 'bg-app-primary text-white' : 'text-app-muted hover:bg-app-bg'}`}
           >
             Balance Sheet
           </button>
@@ -752,6 +826,66 @@ export function Reports() {
         </div>
       </div>
 
+      {/* Month Range Filter Bar */}
+      <div className={`bento-card bg-app-card/70 p-4 border border-app-border rounded-xl print:hidden ${isGeneratingPdf ? 'hidden' : ''}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            {/* Year selector */}
+            <div>
+              <label className="text-[11px] font-bold uppercase text-app-muted block mb-1">Year</label>
+              <select 
+                value={safeReportYear}
+                onChange={(e) => setReportYear(Number(e.target.value))}
+                className="bento-select py-1.5 px-3 min-w-[100px] text-sm font-semibold"
+              >
+                {availableYears.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* From Month */}
+            <div>
+              <label className="text-[11px] font-bold uppercase text-app-muted block mb-1">From Month</label>
+              <select
+                value={startMonth}
+                onChange={e => setStartMonth(Number(e.target.value))}
+                className="bento-select py-1.5 px-3 min-w-[140px] text-sm font-semibold"
+              >
+                {MONTH_NAMES.map((name, idx) => (
+                  <option key={idx} value={idx}>{name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="self-end pb-2 text-app-muted font-bold">&rarr;</div>
+
+            {/* To Month */}
+            <div>
+              <label className="text-[11px] font-bold uppercase text-app-muted block mb-1">To Month</label>
+              <select
+                value={endMonth}
+                onChange={e => setEndMonth(Number(e.target.value))}
+                className="bento-select py-1.5 px-3 min-w-[140px] text-sm font-semibold"
+              >
+                {MONTH_NAMES.map((name, idx) => (
+                  <option key={idx} value={idx}>{name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Selected period active badge */}
+          <div className="text-left sm:text-right">
+            <span className="text-xs text-app-muted block">Selected Period:</span>
+            <span className="font-black text-app-primary text-sm sm:text-base">{periodLabel}</span>
+            <span className="text-xs text-app-muted block mt-0.5">
+              ({activeMonthIndices.length} {activeMonthIndices.length === 1 ? 'month' : 'months'})
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div ref={reportRef} className={`print:block ${isGeneratingPdf ? 'p-8 bg-white text-black min-w-max min-h-max' : ''}`}>
         <div className={`${isGeneratingPdf ? "block" : "hidden print:block"} mb-8 text-center pb-4 border-b-2 border-app-border`}>
           {activeGroup?.logo && (
@@ -759,7 +893,8 @@ export function Reports() {
           )}
           <h1 className="text-3xl font-black uppercase text-app-primary mb-2">{activeGroup?.name || 'SHG Connect'} Report</h1>
           <h2 className="text-xl font-bold uppercase text-app-text">{activeTab.toUpperCase()} REPORT</h2>
-          <p className="text-app-muted mt-2 font-mono">{format(new Date(), 'dd MMMM yyyy, hh:mm a')}</p>
+          <p className="text-app-primary font-bold mt-1 text-base">Period: {periodLabel}</p>
+          <p className="text-app-muted mt-1 font-mono text-xs">{format(new Date(), 'dd MMMM yyyy, hh:mm a')}</p>
         </div>
 
         {activeTab === 'members' && renderMembersReport()}
