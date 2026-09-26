@@ -7,6 +7,27 @@ import { format, addMonths } from 'date-fns';
 import { Edit2, Check, X, Trash2, MessageCircle, Download, AlertTriangle } from 'lucide-react';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
+const TERM_OPTIONS = [
+  { value: '', label: 'None' },
+  { value: '1', label: '1 Month' },
+  { value: '2', label: '2 Months' },
+  { value: '3', label: '3 Months' },
+  { value: '4', label: '4 Months' },
+  { value: '5', label: '5 Months' },
+  { value: '6', label: '6 Months' },
+  { value: '7', label: '7 Months' },
+  { value: '8', label: '8 Months' },
+  { value: '9', label: '9 Months' },
+  { value: '10', label: '10 Months' },
+  { value: '11', label: '11 Months' },
+  { value: '12', label: '12 Months (1 Year)' },
+  { value: '18', label: '18 Months (1.5 Years)' },
+  { value: '24', label: '24 Months (2 Years)' },
+  { value: '36', label: '36 Months (3 Years)' },
+  { value: '48', label: '48 Months (4 Years)' },
+  { value: '60', label: '60 Months (5 Years)' },
+];
+
 export function Loans() {
   const { groups, loans, loanRepayments, members, activeGroupId, addLoan, updateLoan, deleteLoan, addRepayment, updateRepayment, deleteRepayment, currentUserRole } = useAppContext();
   
@@ -15,6 +36,7 @@ export function Loans() {
   const [interestRate, setInterestRate] = useState('2'); // typically SHG uses 1-3% per month
   const [issueDate, setIssueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [loanTerm, setLoanTerm] = useState('12');
+  const [customTerm, setCustomTerm] = useState('');
 
   const [activeLoanId, setActiveLoanId] = useState<string | null>(null);
   const [deletingLoanId, setDeletingLoanId] = useState<string | null>(null);
@@ -53,7 +75,7 @@ export function Loans() {
         const totalPrincipalRepaid = reps.reduce((sum, r) => sum + r.principalAmount, 0);
         const totalInterestPaid = reps.reduce((sum, r) => sum + r.interestAmount, 0);
         const remaining = loan.principal - totalPrincipalRepaid;
-        const dueDate = loan.dueDate ? format(new Date(loan.dueDate), 'yyyy-MM-dd') : (loan.loanTerm ? format(addMonths(new Date(loan.issueDate), loan.loanTerm), 'yyyy-MM-dd') : '');
+        const dueDate = loan.dueDate ? format(new Date(loan.dueDate), 'yyyy-MM-dd') : (loan.loanTerm ? format(addMonths(new Date(loan.issueDate), loan.loanTerm), 'yyyy-MM-dd') : 'None');
         
         return [
           index + 1,
@@ -96,21 +118,27 @@ export function Loans() {
       principal: loan.principal.toString(),
       interestRate: loan.interestRate.toString(),
       issueDate: loan.issueDate,
-      loanTerm: (loan.loanTerm || 12).toString(),
+      loanTerm: loan.loanTerm ? loan.loanTerm.toString() : '',
     });
   };
 
   const saveEditLoan = (loan: any) => {
-    const term = parseInt(editLoanForm.loanTerm) || 12;
+    const term = editLoanForm.loanTerm ? parseInt(editLoanForm.loanTerm) : undefined;
     const dateOfIssue = editLoanForm.issueDate || loan.issueDate;
-    updateLoan({
+    const updatedLoan: any = {
       ...loan,
       principal: parseFloat(editLoanForm.principal) || 0,
       interestRate: parseFloat(editLoanForm.interestRate) || 0,
       issueDate: dateOfIssue,
-      loanTerm: term,
-      dueDate: format(addMonths(new Date(dateOfIssue), term), 'yyyy-MM-dd')
-    });
+    };
+    if (term && !isNaN(term) && term > 0) {
+      updatedLoan.loanTerm = term;
+      updatedLoan.dueDate = format(addMonths(new Date(dateOfIssue), term), 'yyyy-MM-dd');
+    } else {
+      delete updatedLoan.loanTerm;
+      delete updatedLoan.dueDate;
+    }
+    updateLoan(updatedLoan);
     setEditingLoanId(null);
   };
 
@@ -118,20 +146,31 @@ export function Loans() {
     e.preventDefault();
     if (!activeGroupId || !memberId || !principal || !interestRate) return;
     
-    const term = parseInt(loanTerm) || 12;
+    let term: number | undefined = undefined;
+    if (loanTerm === 'custom') {
+      const parsed = parseInt(customTerm);
+      if (parsed > 0) term = parsed;
+    } else if (loanTerm && loanTerm !== '') {
+      const parsed = parseInt(loanTerm);
+      if (parsed > 0) term = parsed;
+    }
     
-    addLoan({
+    const newLoan: any = {
       id: generateId(),
       groupId: activeGroupId,
       memberId,
       principal: parseFloat(principal),
       interestRate: parseFloat(interestRate),
-      loanTerm: term,
       issueDate,
-      dueDate: format(addMonths(new Date(issueDate), term), 'yyyy-MM-dd'),
       status: 'Active'
-    });
+    };
+    if (term) {
+      newLoan.loanTerm = term;
+      newLoan.dueDate = format(addMonths(new Date(issueDate), term), 'yyyy-MM-dd');
+    }
+    addLoan(newLoan);
     setPrincipal('');
+    setCustomTerm('');
   };
 
   const handleAddRepayment = (e: React.FormEvent) => {
@@ -165,7 +204,8 @@ export function Loans() {
     return Math.round((p * rateMonthly * factor) / (factor - 1));
   };
   
-  const formEMI = getEMI(parseFloat(principal) || 0, parseFloat(interestRate) || 0, parseInt(loanTerm) || 0);
+  const effectiveTerm = loanTerm === 'custom' ? (parseInt(customTerm) || 0) : (parseInt(loanTerm) || 0);
+  const formEMI = effectiveTerm > 0 ? getEMI(parseFloat(principal) || 0, parseFloat(interestRate) || 0, effectiveTerm) : 0;
   const standaloneEMI = getEMI(calcP, calcR, calcMonths);
 
   const startEditRepayment = (rep: any) => {
@@ -537,10 +577,30 @@ export function Loans() {
                   </div>
                   <div>
                     <label className="label-small mb-1 block">Term (Months)</label>
-                    <input type="number" value={loanTerm} onChange={e => setLoanTerm(e.target.value)} min="1" className="bento-input" placeholder="e.g. 12" />
+                    <select 
+                      value={loanTerm} 
+                      onChange={e => setLoanTerm(e.target.value)} 
+                      className="bento-select"
+                    >
+                      {TERM_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                      <option value="custom">Custom Months...</option>
+                    </select>
+                    {loanTerm === 'custom' && (
+                      <input 
+                        type="number" 
+                        min="1" 
+                        placeholder="Enter months (e.g. 15)" 
+                        value={customTerm} 
+                        onChange={e => setCustomTerm(e.target.value)} 
+                        className="bento-input mt-2" 
+                        required
+                      />
+                    )}
                   </div>
                 </div>
-                {parseFloat(principal) > 0 && parseInt(loanTerm) > 0 && (
+                {parseFloat(principal) > 0 && effectiveTerm > 0 && (
                   <div className="sm:col-span-2 mt-2 bg-app-primary/10 border border-app-primary/20 rounded-xl p-4 flex justify-between items-center">
                     <div>
                       <div className="text-xs font-bold text-app-primary uppercase tracking-wider mb-1">Suggested EMI</div>
@@ -595,7 +655,7 @@ export function Loans() {
                     <th>Member</th>
                     <th className="text-right">Principal</th>
                     <th className="text-right">Rate /mo</th>
-                    <th className="text-center">Due Date</th>
+                    <th className="text-center">Due Date (Term)</th>
                     <th className="text-center">Status</th>
                     <th className="text-right">Action</th>
                   </tr>
@@ -643,13 +703,18 @@ export function Loans() {
                               />
                             </td>
                             <td className="text-center">
-                              <input 
-                                type="number" 
+                              <select 
                                 value={editLoanForm.loanTerm} 
                                 onChange={e => setEditLoanForm({...editLoanForm, loanTerm: e.target.value})} 
-                                className="bento-input py-1 px-2 text-sm text-center w-full min-w-[60px]"
-                                placeholder="Months"
-                              />
+                                className="bento-select py-1 px-1.5 text-xs text-center w-full min-w-[95px]"
+                              >
+                                {TERM_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                                {editLoanForm.loanTerm && !TERM_OPTIONS.some(o => o.value === editLoanForm.loanTerm) && (
+                                  <option value={editLoanForm.loanTerm}>{editLoanForm.loanTerm} Months</option>
+                                )}
+                              </select>
                             </td>
                             <td className="text-center">
                               <span className={`status-pill w-full justify-center ${remaining <= 0 ? 'bg-app-accent/20 text-app-accent' : isOverdue ? 'bg-red-500/20 text-red-500 font-bold border border-red-500/30' : 'bg-amber-500/20 text-amber-500'}`}>
@@ -675,7 +740,14 @@ export function Loans() {
                             </td>
                             <td className="text-right font-mono text-sm">{loan.interestRate}%</td>
                             <td className={`text-center font-mono text-xs ${isOverdue ? 'text-red-400 font-bold' : 'text-app-muted'}`}>
-                              {loanDueDate ? format(loanDueDate, 'dd/MM/yy') : 'N/A'}
+                              {loanDueDate ? (
+                                <div>
+                                  <div>{format(loanDueDate, 'dd/MM/yy')}</div>
+                                  <div className="text-[10px] text-app-muted font-normal">{loan.loanTerm ? `${loan.loanTerm} mo` : ''}</div>
+                                </div>
+                              ) : (
+                                <span className="text-app-muted font-medium">None</span>
+                              )}
                             </td>
                             <td className="text-center">
                               <span className={`status-pill w-full justify-center ${remaining <= 0 ? 'bg-app-accent/20 text-app-accent' : isOverdue ? 'bg-red-500/20 text-red-500 font-bold border border-red-500/30' : 'bg-amber-500/20 text-amber-500'}`}>
