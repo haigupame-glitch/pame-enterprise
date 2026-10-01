@@ -5,6 +5,7 @@ import { generateId } from '../lib/utils';
 import { format } from 'date-fns';
 import { ImageCropperModal } from '../components/ImageCropperModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 
 export function Groups() {
@@ -479,7 +480,15 @@ export function Groups() {
 
             <div className="bento-card flex-col h-[500px] !p-0 overflow-hidden flex">
               <div className="p-4 border-b-2 border-app-border bg-gray-50 flex justify-between items-center shrink-0">
-                <div className="card-header !mb-0">GROUP CONSTITUTION</div>
+                <div className="flex items-center gap-3">
+                  <div className="card-header !mb-0">GROUP CONSTITUTION</div>
+                  <Link 
+                    to="/constitution" 
+                    className="text-xs text-app-primary hover:underline font-semibold"
+                  >
+                    Open Full Page (Import Word/PDF, Download, Print) &rarr;
+                  </Link>
+                </div>
                 {canEditGroupDetails && (
                   <button
                     onClick={handleUpdateConstitution}
