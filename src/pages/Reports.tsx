@@ -16,7 +16,7 @@ const MONTH_NAMES = [
 export function Reports() {
   const { 
     groups, members, collections, loans, loanRepayments, transactions, activeGroupId,
-    currentUserRole, resolutions, notices, activities, feedbacks
+    currentUserRole, resolutions, notices, activities, feedbacks, investments, properties
   } = useAppContext();
 
   const [activeTab, setActiveTab] = useState<ReportTab>('members');
@@ -247,6 +247,8 @@ export function Reports() {
       notices,
       activities,
       feedbacks,
+      investments,
+      properties,
       exportDate: new Date().toISOString()
     };
     
@@ -698,7 +700,17 @@ export function Reports() {
     });
     const outstandingLoans = totalPrincipal - totalRepaid;
 
-    const totalAssets = currentBalance + outstandingLoans;
+    const groupInvestments = investments.filter(i => i.groupId === activeGroupId);
+    const totalInvestments = groupInvestments
+      .filter(i => i.status === 'Active')
+      .reduce((sum, i) => sum + (Number(i.currentValue || i.maturityAmount || i.amountInvested) || 0), 0);
+
+    const groupProperties = properties.filter(p => p.groupId === activeGroupId);
+    const totalProperties = groupProperties
+      .filter(p => p.status !== 'Disposed')
+      .reduce((sum, p) => sum + (Number(p.estimatedValue || p.purchasePrice) || 0), 0);
+
+    const totalAssets = currentBalance + outstandingLoans + totalInvestments + totalProperties;
     const totalMembersSavings = groupCollections.reduce((sum, c) => sum + c.amount, 0);
     const retainedEarnings = totalAssets - totalMembersSavings;
 
@@ -751,6 +763,14 @@ export function Reports() {
                     <tr className="border-b border-app-border/30 hover:bg-slate-700/10 transition-colors">
                       <td className="p-3 font-semibold">Outstanding Loans</td>
                       <td className="p-3 text-right font-mono font-bold text-app-text">{formatCurrency(outstandingLoans)}</td>
+                    </tr>
+                    <tr className="border-b border-app-border/30 hover:bg-slate-700/10 transition-colors">
+                      <td className="p-3 font-semibold">Investments (FD / RD / MF)</td>
+                      <td className="p-3 text-right font-mono font-bold text-app-text">{formatCurrency(totalInvestments)}</td>
+                    </tr>
+                    <tr className="border-b border-app-border/30 hover:bg-slate-700/10 transition-colors">
+                      <td className="p-3 font-semibold">Property & Tangible Assets</td>
+                      <td className="p-3 text-right font-mono font-bold text-app-text">{formatCurrency(totalProperties)}</td>
                     </tr>
                   </tbody>
                   <tfoot>

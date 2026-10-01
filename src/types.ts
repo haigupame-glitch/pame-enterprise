@@ -129,3 +129,55 @@ export interface Feedback {
   reply?: string;
   rating?: number;
 }
+
+export type InvestmentType = 'Fixed Deposit' | 'Recurring Deposit' | 'Mutual Fund' | 'Other';
+export type InvestmentStatus = 'Active' | 'Matured' | 'Closed';
+
+export interface Investment {
+  id: string;
+  groupId: string;
+  type: InvestmentType;
+  title: string;
+  institution: string;
+  accountNumber?: string;
+  amountInvested: number;
+  monthlyDeposit?: number;
+  currentValue?: number;
+  maturityAmount?: number;
+  interestRate?: number; // ROI % per annum
+  startDate: string; // YYYY-MM-DD
+  maturityDate?: string; // YYYY-MM-DD
+  status: InvestmentStatus;
+  nominee?: string;
+  remarks?: string;
+  createdAt: string;
+}
+
+export type PropertyCategory = 
+  | 'Equipment & Machinery'
+  | 'Land & Building'
+  | 'Furniture & Fixtures'
+  | 'Electronics & IT'
+  | 'Vehicles & Transport'
+  | 'Tools & Implements'
+  | 'Other';
+
+export type PropertyCondition = 'Excellent' | 'Good' | 'Needs Repair' | 'Damaged' | 'Disposed';
+export type PropertyStatus = 'In Use' | 'Rented Out' | 'In Storage' | 'Disposed' | 'Donated';
+
+export interface Property {
+  id: string;
+  groupId: string;
+  name: string;
+  category: PropertyCategory;
+  acquisitionDate: string; // YYYY-MM-DD
+  purchasePrice?: number;
+  estimatedValue?: number;
+  condition: PropertyCondition;
+  status: PropertyStatus;
+  location: string;
+  custodian?: string;
+  serialNumber?: string;
+  remarks: string;
+  createdAt: string;
+}

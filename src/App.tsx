@@ -14,6 +14,8 @@ import { Constitution } from './pages/Constitution';
 import { Notices } from './pages/Notices';
 import { Activities } from './pages/Activities';
 import { Reports } from './pages/Reports';
+import { Investments } from './pages/Investments';
+import { Properties } from './pages/Properties';
 import { Login } from './pages/Login';
 import { Feedback } from './pages/Feedback';
 
@@ -43,6 +45,8 @@ export default function App() {
             <Route path="collections" element={<Collections />} />
             <Route path="transactions" element={<Transactions />} />
             <Route path="loans" element={<Loans />} />
+            <Route path="investments" element={<Investments />} />
+            <Route path="properties" element={<Properties />} />
             <Route path="resolutions" element={<Resolutions />} />
             <Route path="constitution" element={<Constitution />} />
             <Route path="notices" element={<Notices />} />

@@ -1,11 +1,11 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2, Wifi, WifiOff, RefreshCw, CloudCheck, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, Wallet, ScrollText, PiggyBank, FileText, Send, Building, LogOut, FileSignature, ClipboardList, BarChart3, UserCircle2, Wifi, WifiOff, RefreshCw, CloudCheck, MessageSquare, TrendingUp, Landmark } from 'lucide-react';
 import { useAppContext } from '../store/AppContext';
 import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import type { Role } from '../types';
-import { auth, db } from '../lib/firebase';
+import { auth, db, cleanForFirestore } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -17,6 +17,8 @@ const navigation = [
   { name: 'Collections', to: '/collections', icon: Wallet, defaultGroupNeeds: true },
   { name: 'Transactions', to: '/transactions', icon: ScrollText, defaultGroupNeeds: true },
   { name: 'Loans', to: '/loans', icon: PiggyBank, defaultGroupNeeds: true },
+  { name: 'Investments', to: '/investments', icon: TrendingUp, defaultGroupNeeds: true },
+  { name: 'Properties', to: '/properties', icon: Landmark, defaultGroupNeeds: true },
   { name: 'Activities', to: '/activities', icon: ClipboardList, defaultGroupNeeds: true },
   { name: 'Resolutions', to: '/resolutions', icon: FileSignature, defaultGroupNeeds: true },
   { name: 'Notices', to: '/notices', icon: Send, defaultGroupNeeds: true },
@@ -94,10 +96,10 @@ export function Layout() {
       // and ensure data is erased before Auth is revoked.
       const newMembers = members.filter(m => m.id !== currentUserId);
       if (orgId) {
-        await setDoc(doc(db, 'appStore', orgId), {
+        await setDoc(doc(db, 'appStore', orgId), cleanForFirestore({
           members: newMembers,
           updatedAt: new Date().toISOString()
-        }, { merge: true });
+        }), { merge: true });
       }
     } catch(err: any) {
       const errorString = String(err).toLowerCase();

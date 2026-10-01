@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db } from '../lib/firebase';
+import { auth, db, cleanForFirestore } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAppContext } from '../store/AppContext';
 import { 
@@ -308,7 +308,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
         // Register organization mapping
         try {
-           await executeWithTempAuth(() => setDoc(doc(db, 'memberDirectory_v3', rawPhone), { orgId: newUserId }));
+           await executeWithTempAuth(() => setDoc(doc(db, 'memberDirectory_v3', rawPhone), cleanForFirestore({ orgId: newUserId })));
         } catch(e) { console.warn("Failed to register directory map", e); }
 
         // Create the member
@@ -390,7 +390,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         dbMembers[memberIndex].loginPassword = password;
         dbMembers[memberIndex].authVersion = (dbMembers[memberIndex].authVersion || 0) + 1;
         
-        await setDoc(doc(db, 'appStore', resetTargetOrgId), { members: dbMembers }, { merge: true });
+        await setDoc(doc(db, 'appStore', resetTargetOrgId), cleanForFirestore({ members: dbMembers }), { merge: true });
         
         // Also try to update the Firebase Auth password if an account exists for this pseudoEmail
         try {

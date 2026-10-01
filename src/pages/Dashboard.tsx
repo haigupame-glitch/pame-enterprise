@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '../store/AppContext';
-import { Users, Building, Wallet, ScrollText, Download, CheckCircle2, CalendarDays, TrendingUp, TrendingDown, HandCoins, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Users, Building, Wallet, ScrollText, Download, CheckCircle2, CalendarDays, TrendingUp, TrendingDown, HandCoins, ArrowUpRight, ArrowDownRight, Landmark } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { format, isAfter, startOfDay } from 'date-fns';
@@ -8,7 +8,8 @@ import { format, isAfter, startOfDay } from 'date-fns';
 export function Dashboard() {
   const { 
     groups, members, transactions, activeGroupId, currentUserRole,
-    collections, loans, loanRepayments, resolutions, notices, activities, feedbacks
+    collections, loans, loanRepayments, resolutions, notices, activities, feedbacks,
+    investments, properties
   } = useAppContext();
   
   const [showToast, setShowToast] = useState(false);
@@ -17,8 +18,18 @@ export function Dashboard() {
   const groupMembers = members.filter(m => m.groupId === activeGroupId);
   const groupTransactions = transactions.filter(t => t.groupId === activeGroupId);
   const groupActivities = activities.filter(a => a.groupId === activeGroupId);
+  const groupInvestments = investments.filter(i => i.groupId === activeGroupId);
+  const groupProperties = properties.filter(p => p.groupId === activeGroupId);
   
   const latestBalance = groupTransactions.length > 0 ? groupTransactions[groupTransactions.length - 1].runningBalance : 0;
+
+  const totalInvestedValue = groupInvestments
+    .filter(i => i.status === 'Active')
+    .reduce((sum, i) => sum + (Number(i.currentValue || i.maturityAmount || i.amountInvested) || 0), 0);
+
+  const totalPropertyValue = groupProperties
+    .filter(p => p.status !== 'Disposed')
+    .reduce((sum, p) => sum + (Number(p.estimatedValue || p.purchasePrice) || 0), 0);
 
   const upcomingEvents = useMemo(() => {
     const today = startOfDay(new Date());
@@ -58,6 +69,8 @@ export function Dashboard() {
       notices,
       activities,
       feedbacks,
+      investments,
+      properties,
       exportDate: new Date().toISOString()
     };
     
@@ -158,6 +171,45 @@ export function Dashboard() {
                 <Wallet className="h-4 w-4 text-app-primary" strokeWidth={1.5} />
               </div>
               <div className="stat-huge text-app-primary text-4xl z-10 relative">{formatCurrency(latestBalance)}</div>
+            </div>
+
+            {/* Investments & Properties Summary Cards */}
+            <div className="bento-card relative overflow-hidden group border-blue-500/30 bg-blue-500/5 lg:col-span-2">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 pointer-events-none"></div>
+              <div className="flex items-center justify-between mb-2 relative z-10">
+                <div className="card-header !mb-0 !text-blue-400">
+                  INVESTMENTS & DEPOSITS
+                  <TrendingUp className="h-4 w-4 text-blue-400 ml-2 inline-block" strokeWidth={1.5} />
+                </div>
+                <Link to="/investments" className="text-xs font-bold text-blue-400 hover:text-blue-300 uppercase tracking-wider">
+                  Manage &rarr;
+                </Link>
+              </div>
+              <div className="flex items-baseline justify-between relative z-10 mt-1">
+                <div className="stat-huge text-blue-400 text-2xl sm:text-3xl font-mono">{formatCurrency(totalInvestedValue)}</div>
+                <div className="text-xs font-medium text-slate-400">
+                  {groupInvestments.filter(i => i.status === 'Active').length} Active (FD / RD / MF)
+                </div>
+              </div>
+            </div>
+
+            <div className="bento-card relative overflow-hidden group border-amber-500/30 bg-amber-500/5 lg:col-span-2">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 pointer-events-none"></div>
+              <div className="flex items-center justify-between mb-2 relative z-10">
+                <div className="card-header !mb-0 !text-amber-400">
+                  GROUP PROPERTY & ASSETS
+                  <Landmark className="h-4 w-4 text-amber-400 ml-2 inline-block" strokeWidth={1.5} />
+                </div>
+                <Link to="/properties" className="text-xs font-bold text-amber-400 hover:text-amber-300 uppercase tracking-wider">
+                  View Assets &rarr;
+                </Link>
+              </div>
+              <div className="flex items-baseline justify-between relative z-10 mt-1">
+                <div className="stat-huge text-amber-400 text-2xl sm:text-3xl font-mono">{formatCurrency(totalPropertyValue)}</div>
+                <div className="text-xs font-medium text-slate-400">
+                  {groupProperties.filter(p => p.status !== 'Disposed').length} Asset Items Logged
+                </div>
+              </div>
             </div>
 
             <div className="bento-card relative overflow-hidden group lg:col-span-4 flex flex-col md:flex-row items-center justify-between bg-slate-800/20 mt-6">

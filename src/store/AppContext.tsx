@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import localforage from 'localforage';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
-import { db, auth } from '../lib/firebase';
-import type { Group, Member, Collection, Transaction, Loan, LoanRepayment, Resolution, Notice, Activity, Role, Feedback } from '../types';
+import { db, auth, cleanForFirestore } from '../lib/firebase';
+import type { Group, Member, Collection, Transaction, Loan, LoanRepayment, Resolution, Notice, Activity, Role, Feedback, Investment, Property } from '../types';
 
 interface AppState {
   groups: Group[];
@@ -16,6 +16,8 @@ interface AppState {
   notices: Notice[];
   activities: Activity[];
   feedbacks: Feedback[];
+  investments: Investment[];
+  properties: Property[];
   activeGroupId: string | null;
   currentUserRole: Role | null;
   currentUserId: string | null;
@@ -56,6 +58,12 @@ interface AppContextType extends AppState {
   addFeedback: (feedback: Feedback) => void;
   updateFeedback: (feedback: Feedback) => void;
   deleteFeedback: (id: string) => void;
+  addInvestment: (investment: Investment) => void;
+  updateInvestment: (investment: Investment) => void;
+  deleteInvestment: (id: string) => void;
+  addProperty: (property: Property) => void;
+  updateProperty: (property: Property) => void;
+  deleteProperty: (id: string) => void;
   updateGroup: (groupId: string, data: Partial<Group>) => void;
   deleteGroup: (groupId: string) => void;
   updateConstitution: (groupId: string, constitution: string) => void;
@@ -73,6 +81,8 @@ const defaultState: AppState = {
   notices: [],
   activities: [],
   feedbacks: [],
+  investments: [],
+  properties: [],
   activeGroupId: null,
   currentUserRole: null,
   currentUserId: null,
@@ -178,6 +188,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               notices: data.notices || [],
               activities: data.activities || [],
               feedbacks: data.feedbacks || [],
+              investments: data.investments || [],
+              properties: data.properties || [],
             }));
           } else if (!snapshot.exists()) {
             // Document does not exist yet! If we have any local data, trigger a push.
@@ -218,7 +230,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
            setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
            return;
         }
-        const payload = {
+        const rawPayload = {
           groups: state.groups,
           members: state.members,
           collections: state.collections,
@@ -229,23 +241,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           notices: state.notices,
           activities: state.activities,
           feedbacks: state.feedbacks,
+          investments: state.investments,
+          properties: state.properties,
           updatedAt: new Date().toISOString()
         };
+        const payload = cleanForFirestore(rawPayload);
         
-        setDoc(doc(db, 'appStore', state.orgId), payload, { merge: true })
-          .then(() => {
-            setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
-          })
-          .catch(err => {
-            const errorString = String(err).toLowerCase();
-            if (errorString.includes('permission-denied') || errorString.includes('missing or insufficient permissions')) {
-               // We just signed out or got removed. Clear pending changes and avoid logging an error gracefully.
-               setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'offline' }));
-            } else {
-               console.error('Sync failed', err);
-               setState(prev => ({ ...prev, syncStatus: 'offline' }));
-            }
-          });
+        try {
+          setDoc(doc(db, 'appStore', state.orgId), payload, { merge: true })
+            .then(() => {
+              setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'synced' }));
+            })
+            .catch(err => {
+              const errorString = String(err).toLowerCase();
+              if (errorString.includes('permission-denied') || errorString.includes('missing or insufficient permissions')) {
+                 // We just signed out or got removed. Clear pending changes and avoid logging an error gracefully.
+                 setState(prev => ({ ...prev, pendingChanges: 0, syncStatus: 'offline' }));
+              } else {
+                 console.error('Sync failed', err);
+                 setState(prev => ({ ...prev, syncStatus: 'offline' }));
+              }
+            });
+        } catch (syncErr) {
+          console.error('Synchronous sync error:', syncErr);
+          setState(prev => ({ ...prev, syncStatus: 'offline' }));
+        }
       }, 2000); // Debounce for 2 seconds
 
       return () => clearTimeout(timer);
@@ -263,7 +283,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.resolutions, 
     state.notices, 
     state.activities,
-    state.feedbacks
+    state.feedbacks,
+    state.investments,
+    state.properties
   ]);
 
   useEffect(() => {
@@ -343,7 +365,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Attempt to register map centrally
     const phone = (member.contact || member.loginId || member.memberNumber || '').trim();
     if (phone && state.orgId) {
-      setDoc(doc(db, 'memberDirectory_v3', phone), { orgId: state.orgId }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'memberDirectory_v3', phone), cleanForFirestore({ orgId: state.orgId }), { merge: true }).catch(console.error);
     }
   };
   
@@ -365,7 +387,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const phone = (member.contact || member.loginId || member.memberNumber || '').trim();
     if (phone && state.orgId) {
-      setDoc(doc(db, 'memberDirectory_v3', phone), { orgId: state.orgId }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'memberDirectory_v3', phone), cleanForFirestore({ orgId: state.orgId }), { merge: true }).catch(console.error);
     }
   };
   
@@ -475,6 +497,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!enforceSuperAdmin() && !enforceAdminOrAbove()) return;
     updateState({ feedbacks: state.feedbacks.filter(f => f.id !== id) });
   };
+
+  const addInvestment = (investment: Investment) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ investments: [...state.investments, investment] });
+  };
+  const updateInvestment = (investment: Investment) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ investments: state.investments.map(i => i.id === investment.id ? investment : i) });
+  };
+  const deleteInvestment = (id: string) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ investments: state.investments.filter(i => i.id !== id) });
+  };
+
+  const addProperty = (property: Property) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ properties: [...state.properties, property] });
+  };
+  const updateProperty = (property: Property) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ properties: state.properties.map(p => p.id === property.id ? property : p) });
+  };
+  const deleteProperty = (id: string) => {
+    if (!enforceTreasurerOrAbove()) return;
+    updateState({ properties: state.properties.filter(p => p.id !== id) });
+  };
   
   const updateConstitution = (groupId: string, constitution: string) => {
     if (!enforceAdminOrAbove()) return;
@@ -542,6 +590,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addFeedback,
       updateFeedback,
       deleteFeedback,
+      addInvestment,
+      updateInvestment,
+      deleteInvestment,
+      addProperty,
+      updateProperty,
+      deleteProperty,
       updateGroup,
       deleteGroup,
       updateConstitution,
